@@ -884,10 +884,15 @@ function getSelectedPlaygroundModel() {
   return state.models.find((model) => model.id === state.playgroundModelId) || state.models[0] || MODEL_FALLBACK[0];
 }
 
+function isDeepSeekModel(model) {
+  return [model.id, model.provider, model.displayName].some((value) => String(value || "").toLowerCase().includes("deepseek"));
+}
+
 function playgroundPayload() {
   const model = getSelectedPlaygroundModel();
   const prompt = byId("userPrompt")?.value || "";
   const temperature = Number(byId("temperature")?.value || 0.7);
+  const thinkingEnabled = Boolean(byId("enableThinking")?.checked);
 
   if (model.category === "image") {
     return {
@@ -923,9 +928,7 @@ function playgroundPayload() {
       stream_options: {
         include_usage: true
       },
-      chat_template_kwargs: {
-        enable_thinking: Boolean(byId("enableThinking")?.checked)
-      }
+      chat_template_kwargs: isDeepSeekModel(model) ? { thinking: thinkingEnabled } : { enable_thinking: thinkingEnabled }
     }
   };
 }
