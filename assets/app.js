@@ -535,6 +535,10 @@ function apiConfig() {
   return window.FREYR_API_CONFIG || {};
 }
 
+function isLocalDevelopmentHost() {
+  return ["localhost", "127.0.0.1", "[::1]", "::1"].includes(location.hostname);
+}
+
 function friendlyApiError(error) {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/failed to fetch|load failed|network|cors/i.test(message)) {
@@ -686,7 +690,7 @@ async function loadModels() {
   setApiStatus("models", "loading");
   let lastError;
 
-  if (location.protocol.startsWith("http")) {
+  if (isLocalDevelopmentHost()) {
     try {
       const data = await fetchLocalModelInfo();
       if (Array.isArray(data.prices)) state.pricing = { ...PRICING_FALLBACK, ...data, prices: data.prices };
@@ -728,7 +732,7 @@ async function loadPricing() {
   setApiStatus("pricing", "loading");
   let lastError;
 
-  if (location.protocol.startsWith("http")) {
+  if (isLocalDevelopmentHost()) {
     try {
       const data = await fetchLocalModelInfo();
       setApiStatus("pricing", "live");
@@ -1026,7 +1030,7 @@ async function readJsonResponse(response) {
 async function fetchChatCompletion(body) {
   const payload = JSON.stringify(body);
 
-  if (location.protocol.startsWith("http")) {
+  if (isLocalDevelopmentHost()) {
     const localResponse = await fetch("api/chat/completions", {
       method: "POST",
       headers: {
