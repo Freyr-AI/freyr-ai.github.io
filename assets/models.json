@@ -1,0 +1,142 @@
+{
+  "updatedAt": "2026-05-13",
+  "sourceNote": "Static fallback catalog for the Freyr website prototype. Replace or sync from an approved public model-list endpoint before production.",
+  "models": [
+    {
+      "id": "deepseek-ai/DeepSeek-R1",
+      "displayName": "DeepSeek R1",
+      "category": "text",
+      "provider": "DeepSeek",
+      "description": "Reasoning-focused text model for complex analysis, coding, and structured problem solving.",
+      "capabilities": ["reasoning", "chat", "code"],
+      "contextWindow": "Long context",
+      "outputLimit": "Provider defined",
+      "pricing": "Contact sales",
+      "docsUrl": "api.html#text-generation",
+      "featured": true
+    },
+    {
+      "id": "gpt-5",
+      "displayName": "GPT-5",
+      "category": "text",
+      "provider": "OpenAI Compatible",
+      "description": "General-purpose frontier text model for enterprise assistants, document workflows, and coding tasks.",
+      "capabilities": ["chat", "reasoning", "tool use"],
+      "contextWindow": "Long context",
+      "outputLimit": "Provider defined",
+      "pricing": "Usage based",
+      "docsUrl": "api.html#text-generation",
+      "featured": true
+    },
+    {
+      "id": "models/gemini-2.5-pro",
+      "displayName": "Gemini 2.5 Pro",
+      "category": "text",
+      "provider": "Gemini Compatible",
+      "description": "Multimodal-ready model family for advanced generation, analysis, and agentic workflows.",
+      "capabilities": ["chat", "multimodal", "generateContent"],
+      "contextWindow": "Long context",
+      "outputLimit": "Provider defined",
+      "pricing": "Usage based",
+      "docsUrl": "api.html#model-list",
+      "featured": true
+    },
+    {
+      "id": "models/gemini-2.5-flash",
+      "displayName": "Gemini 2.5 Flash",
+      "category": "text",
+      "provider": "Gemini Compatible",
+      "description": "Fast-response text model for lightweight assistants, summarization, and interactive UX.",
+      "capabilities": ["chat", "fast", "generateContent"],
+      "contextWindow": "Long context",
+      "outputLimit": "Provider defined",
+      "pricing": "Usage based",
+      "docsUrl": "api.html#model-list",
+      "featured": false
+    },
+    {
+      "id": "gemini-2.5-flash-image",
+      "displayName": "Gemini 2.5 Flash Image",
+      "category": "image",
+      "provider": "Gemini Compatible",
+      "description": "Image generation model for concept exploration, campaign visuals, and rapid creative variants.",
+      "capabilities": ["text-to-image", "creative generation"],
+      "imageSizes": "Provider defined",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": true
+    },
+    {
+      "id": "gemini-3-pro-image",
+      "displayName": "Gemini 3 Pro Image",
+      "category": "image",
+      "provider": "Gemini Compatible",
+      "description": "Higher-fidelity image model for production-quality creative generation and visual exploration.",
+      "capabilities": ["text-to-image", "high fidelity"],
+      "imageSizes": "Provider defined",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": true
+    },
+    {
+      "id": "black-forest-labs/flux.1-dev",
+      "displayName": "FLUX.1 Dev",
+      "category": "image",
+      "provider": "Black Forest Labs",
+      "description": "Image generation model for prompt-driven visuals, art direction, and design exploration.",
+      "capabilities": ["text-to-image", "design exploration"],
+      "imageSizes": "Multiple sizes",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": true
+    },
+    {
+      "id": "black-forest-labs/flux-kontext-pro",
+      "displayName": "FLUX Kontext Pro",
+      "category": "image",
+      "provider": "Black Forest Labs",
+      "description": "Image model for context-aware generation and edit workflows where visual continuity matters.",
+      "capabilities": ["image editing", "context aware"],
+      "imageSizes": "Multiple sizes",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": false
+    },
+    {
+      "id": "Qwen/Qwen-Image",
+      "displayName": "Qwen Image",
+      "category": "image",
+      "provider": "Qwen",
+      "description": "Image generation model for multilingual prompt workflows and creative production.",
+      "capabilities": ["text-to-image", "multilingual"],
+      "imageSizes": "Multiple sizes",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": false
+    },
+    {
+      "id": "Qwen/Qwen-Image-Edit",
+      "displayName": "Qwen Image Edit",
+      "category": "image",
+      "provider": "Qwen",
+      "description": "Editing-focused image model for object changes, refinements, and creative iteration.",
+      "capabilities": ["image editing", "refinement"],
+      "imageSizes": "Multiple sizes",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": false
+    },
+    {
+      "id": "gpt-image-1.5",
+      "displayName": "GPT Image 1.5",
+      "category": "image",
+      "provider": "OpenAI Compatible",
+      "description": "Image generation and editing model for branded content, visual prototypes, and creative assets.",
+      "capabilities": ["text-to-image", "image editing"],
+      "imageSizes": "Provider defined",
+      "pricing": "Per image",
+      "docsUrl": "api.html#image-generation",
+      "featured": false
+    }
+  ]
+}
