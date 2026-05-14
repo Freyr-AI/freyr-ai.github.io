@@ -1167,114 +1167,10 @@ tr:last-child td {
   color: var(--slate);
 }
 
-.contact-grid {
-  display: grid;
-  grid-template-columns: minmax(320px, 0.88fr) minmax(0, 1fr);
-  gap: 28px;
-}
-
-.contact-list {
-  display: grid;
-  gap: 14px;
-  margin-top: 24px;
-}
-
-.contact-item {
-  padding: 18px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--white);
-}
-
-.contact-item span {
-  display: block;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 780;
-  text-transform: uppercase;
-}
-
-.contact-item strong,
-.contact-item a {
-  display: block;
-  margin-top: 6px;
-  color: var(--ink);
-  font-size: 17px;
-}
-
-.form-card {
-  padding: 28px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--white);
-  box-shadow: var(--shadow);
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.form-field {
-  display: grid;
-  gap: 7px;
-}
-
-.form-field.full {
-  grid-column: 1 / -1;
-}
-
-.form-field label {
-  color: #2c3546;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.form-field input,
-.form-field select,
-.form-field textarea {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--white);
-  color: var(--ink);
-}
-
-.form-field textarea {
-  min-height: 132px;
-  resize: vertical;
-}
-
-.form-field input:focus,
-.form-field select:focus,
-.form-field textarea:focus,
 .search:focus,
 .select:focus {
   outline: 3px solid rgba(5, 93, 213, 0.15);
   border-color: var(--action-blue);
-}
-
-.form-note {
-  margin-top: 14px;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.form-status {
-  min-height: 24px;
-  margin-top: 14px;
-  font-weight: 760;
-}
-
-.form-status.is-error {
-  color: var(--danger);
-}
-
-.form-status.is-success {
-  color: var(--success);
 }
 
 .checkbox {
@@ -1396,8 +1292,7 @@ tr:last-child td {
   .hero .container,
   .split,
   .docs-layout,
-  .legal-layout,
-  .contact-grid {
+  .legal-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1530,8 +1425,7 @@ tr:last-child td {
 
   .cta-band,
   .legal-content,
-  .doc-section,
-  .form-card {
+  .doc-section {
     padding: 24px;
   }
 

@@ -138,6 +138,7 @@ const MODEL_FALLBACK = [
 ];
 
 const DEFAULT_API_BASE_URL = "https://test.token-exchange-ai.com/api/native/v1";
+const PLAYGROUND_HEADERS_COOKIE = "freyrPlaygroundHeaders";
 
 const PRICING_FALLBACK = {
   updatedAt: "2026-05-13",
@@ -169,7 +170,7 @@ const state = {
   priceSort: "category",
   lang: localStorage.getItem("freyrLang") || "en",
   playgroundModelId: "deepseek-ai/DeepSeek-R1",
-  playgroundHeaders: "",
+  playgroundHeaders: readCookie(PLAYGROUND_HEADERS_COOKIE),
   apiStatus: {
     models: { type: "loading", detail: "" },
     pricing: { type: "loading", detail: "" }
@@ -178,6 +179,25 @@ const state = {
 
 const byId = (id) => document.getElementById(id);
 const all = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
+
+function readCookie(name) {
+  const prefix = `${encodeURIComponent(name)}=`;
+  const cookie = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix));
+  if (!cookie) return "";
+  try {
+    return decodeURIComponent(cookie.slice(prefix.length));
+  } catch {
+    return "";
+  }
+}
+
+function writeCookie(name, value) {
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `${encodeURIComponent(name)}=${encodeURIComponent(value)}; Path=/; Max-Age=2592000; SameSite=Lax${secure}`;
+}
 
 const TEXT_ZH = {
   "Home": "首页",
@@ -226,6 +246,9 @@ const TEXT_ZH = {
   "Browse Models": "浏览模型",
   "Talk to Freyr about your AI workload": "与 Freyr 沟通你的 AI 工作负载",
   "Tell us about your model, GPU requirements, deployment timeline, and expected traffic. Freyr will help map the right infrastructure and API path.": "告诉我们你的模型、GPU 需求、部署时间表和预期流量。Freyr 将帮助匹配合适的基础设施与 API 路径。",
+  "Plan your AI workload path": "规划你的 AI 工作负载路径",
+  "Review the model catalog, GPU solution paths, and API surface to choose the right infrastructure direction.": "查看模型目录、GPU 方案路径和 API 能力，选择合适的基础设施方向。",
+  "View Solutions": "查看方案",
   "Model catalog": "模型目录",
   "Browse text and image generation models": "浏览文本与图片生成模型",
   "Loading live model API...": "正在加载实时模型 API...",
@@ -350,6 +373,8 @@ const TEXT_ZH = {
   "Need production access?": "需要生产访问权限？",
   "Contact Freyr with your expected model mix, request volume, latency target, region, and GPU requirements.": "请将预期模型组合、请求量、延迟目标、区域和 GPU 需求发送给 Freyr。",
   "Contact Freyr": "联系 Freyr",
+  "Review the model catalog and API examples before planning production access for your expected model mix, request volume, latency target, region, and GPU requirements.": "在规划生产访问前，请先查看模型目录和 API 示例，并结合预期模型组合、请求量、延迟目标、区域和 GPU 需求进行评估。",
+  "Review Pricing": "查看价格",
   "We are here to answer your questions": "我们会协助解答你的问题",
   "Use the form or contact Freyr directly. The prototype form opens your email client with a structured inquiry draft.": "你可以使用表单或直接联系 Freyr。原型表单会打开结构化邮件草稿。",
   "Email address": "邮箱地址",
@@ -391,8 +416,10 @@ const TEXT_ZH = {
   "This is implementation-ready placeholder copy, not final legal advice. Freyr should confirm logging, retention, subprocessors, and user-rights language before publishing.": "这是可实现的占位政策文案，不构成最终法律意见。发布前 Freyr 应确认日志、保留期限、子处理方和用户权利相关表述。",
   "1. Scope and acceptance": "1. 适用范围与接受",
   "This Privacy Policy explains how Freyr Technology AI may collect, use, disclose, and protect information when visitors use this website, contact Freyr, or evaluate Freyr model API and GPU infrastructure services.": "本隐私政策说明访问者使用本网站、联系 Freyr 或评估 Freyr 模型 API 与 GPU 基础设施服务时，Freyr Technology AI 可能如何收集、使用、披露和保护信息。",
+  "This Privacy Policy explains how Freyr Technology AI may collect, use, disclose, and protect information when visitors use this website or evaluate Freyr model API and GPU infrastructure services.": "本隐私政策说明访问者使用本网站或评估 Freyr 模型 API 与 GPU 基础设施服务时，Freyr Technology AI 可能如何收集、使用、披露和保护信息。",
   "2. Information we collect": "2. 我们收集的信息",
   "We may collect information that you provide directly, including name, company, business email, phone number, country or region, workload requirements, and messages submitted through contact forms or email.": "我们可能收集你直接提供的信息，包括姓名、公司、商务邮箱、电话号码、国家或地区、工作负载需求，以及通过联系表单或电子邮件提交的信息。",
+  "We may collect information that you provide directly, including name, company, business email, phone number, country or region, workload requirements, and messages submitted through business inquiry channels.": "我们可能收集你直接提供的信息，包括姓名、公司、商务邮箱、电话号码、国家或地区、工作负载需求，以及通过业务咨询渠道提交的信息。",
   "We may also collect limited technical information such as browser type, pages visited, timestamps, and device information when needed to operate and secure the website.": "为运营和保护网站，我们也可能收集有限的技术信息，例如浏览器类型、访问页面、时间戳和设备信息。",
   "3. API request and response data": "3. API 请求与响应数据",
   "For model API services, prompts, inputs, generated outputs, metadata, request IDs, usage volume, latency, and error information may be processed to provide the service, troubleshoot issues, prevent abuse, and support billing or capacity planning.": "对于模型 API 服务，我们可能处理提示词、输入、生成输出、元数据、请求 ID、用量、延迟和错误信息，以提供服务、排查问题、防止滥用，并支持计费或容量规划。",
@@ -407,6 +434,7 @@ const TEXT_ZH = {
   "We use reasonable administrative, technical, and organizational safeguards designed to protect information. No internet or infrastructure service can be guaranteed to be completely secure.": "我们采用合理的管理、技术和组织保护措施来保护信息。但任何互联网或基础设施服务都无法保证绝对安全。",
   "8. Your rights and choices": "8. 你的权利与选择",
   "Depending on where you are located, you may have rights to access, correct, delete, restrict, or object to certain processing of personal information. Contact Freyr to submit a privacy request.": "根据你所在地区，你可能有权访问、更正、删除、限制或反对某些个人信息处理。请联系 Freyr 提交隐私请求。",
+  "Depending on where you are located, you may have rights to access, correct, delete, restrict, or object to certain processing of personal information.": "根据你所在地区，你可能有权访问、更正、删除、限制或反对某些个人信息处理。",
   "For privacy questions, contact Freyr at": "如有隐私问题，请联系 Freyr：",
   "GPU infrastructure and deployment services for enterprise AI": "面向企业 AI 的 GPU 基础设施与部署服务",
   "Freyr supports customers from infrastructure planning through GPU capacity, bare metal leasing, data center deployment, and production model inference.": "Freyr 从基础设施规划、GPU 容量、裸金属租赁、数据中心部署到生产模型推理，为客户提供支持。",
@@ -449,6 +477,8 @@ const TEXT_ZH = {
   "Next step": "下一步",
   "Send Freyr your workload profile": "发送你的工作负载画像给 Freyr",
   "Share model size, target throughput, region, deployment timing, and whether you prefer model API access or dedicated GPU infrastructure.": "分享模型规模、目标吞吐、区域、部署时间，以及你偏好模型 API 接入还是专用 GPU 基础设施。",
+  "Review your workload path": "查看你的工作负载路径",
+  "Compare model API access, dedicated GPU infrastructure, and deployment services before choosing a production route.": "在选择生产路线前，对比模型 API 接入、专用 GPU 基础设施和部署服务。",
   "Review API Docs": "查看 API 文档"
 };
 
@@ -606,6 +636,11 @@ function parseHeaderLines(value) {
 
 function playgroundHeaders() {
   return parseHeaderLines(byId("playgroundHeaders")?.value || state.playgroundHeaders);
+}
+
+function setPlaygroundHeaders(value) {
+  state.playgroundHeaders = value;
+  writeCookie(PLAYGROUND_HEADERS_COOKIE, value);
 }
 
 function providerFromModel(modelName) {
@@ -1100,6 +1135,11 @@ function initPlayground() {
   const select = byId("playgroundModel");
   if (!playground || !select) return;
 
+  const headersInput = byId("playgroundHeaders");
+  if (headersInput && !headersInput.value && state.playgroundHeaders) {
+    headersInput.value = state.playgroundHeaders;
+  }
+
   select.innerHTML = state.models
     .map((model) => `<option value="${model.id}">${model.displayName} · ${model.category === "text" ? "Text" : "Image"}</option>`)
     .join("");
@@ -1116,11 +1156,11 @@ function initPlayground() {
   ["maxTokens", "temperature", "topP", "imageSize", "streamResponse", "enableThinking", "systemPrompt", "userPrompt", "playgroundHeaders"].forEach((id) => {
     const input = byId(id);
     input?.addEventListener("input", () => {
-      if (id === "playgroundHeaders") state.playgroundHeaders = input.value;
+      if (id === "playgroundHeaders") setPlaygroundHeaders(input.value);
       updatePlayground();
     });
     input?.addEventListener("change", () => {
-      if (id === "playgroundHeaders") state.playgroundHeaders = input.value;
+      if (id === "playgroundHeaders") setPlaygroundHeaders(input.value);
       updatePlayground();
     });
   });
@@ -1333,48 +1373,10 @@ function initCopyButtons() {
   });
 }
 
-function initContactForm() {
-  const form = byId("contactForm");
-  const status = byId("formStatus");
-  if (!form || !status) return;
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const data = new FormData(form);
-    const required = ["name", "company", "email", "useCase", "message"];
-    const missing = required.filter((name) => !String(data.get(name) || "").trim());
-
-    if (missing.length) {
-      status.textContent = "Please complete the required fields before sending.";
-      status.className = "form-status is-error";
-      return;
-    }
-
-    const subject = encodeURIComponent(`Freyr AI inquiry from ${data.get("company")}`);
-    const body = encodeURIComponent([
-      `Name: ${data.get("name")}`,
-      `Company: ${data.get("company")}`,
-      `Country/region: ${data.get("region") || ""}`,
-      `Phone: ${data.get("phone") || ""}`,
-      `Email: ${data.get("email")}`,
-      `Use case: ${data.get("useCase")}`,
-      `Requirement: ${data.get("requirement") || ""}`,
-      `Timeline: ${data.get("timeline") || ""}`,
-      "",
-      data.get("message")
-    ].join("\n"));
-
-    status.textContent = "Opening your email client with the inquiry draft.";
-    status.className = "form-status is-success";
-    window.location.href = `mailto:ContactUS@freyrtech.ai?subject=${subject}&body=${body}`;
-  });
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   initChrome();
   initModels();
   initPricing();
   initCopyButtons();
-  initContactForm();
   applyTranslations();
 });

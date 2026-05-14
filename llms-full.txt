@@ -8,7 +8,7 @@ The site is a static, no-database website for enterprise visitors evaluating GPU
 
 ## Primary Content
 
-The home page introduces Freyr as a provider of high-performance GPU infrastructure for model inference and training. It links to a model catalog, API documentation, solutions, privacy information, and contact.
+The home page introduces Freyr as a provider of high-performance GPU infrastructure for model inference and training. It links to a model catalog, API documentation, solutions, and privacy information.
 
 The Models page presents a model catalog with text models and image generation models. The prototype loads from a static JSON file at `/assets/models.json`. Production should replace or synchronize this catalog from an approved Freyr or provider endpoint that does not expose private API credentials in browser code.
 
@@ -19,12 +19,6 @@ The API Docs page explains the intended integration structure for model discover
 The Solutions page summarizes GPU Solution, Bare Metal Leasing, and Delivery Service. It also includes a workload matrix for training, inference, computer vision, rendering, and enterprise evaluation.
 
 The Privacy Policy page is draft legal copy for review. It should not be treated as final legal advice.
-
-The Contact page lists Freyr's contact email, phone number, and Singapore office address, and includes a static inquiry form that opens an email draft.
-
-## Contact Details
-
-Freyr can be contacted at ContactUS@freyrtech.ai or +65 89585382. The listed Singapore office address is U-Club Prudential Tower 30 Cecil Street Level #14-01 Prudential Tower, Singapore 049712.
 
 ## Important Caveats
 

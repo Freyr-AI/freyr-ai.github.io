@@ -1,6 +1,6 @@
 # Freyr Technology AI
 
-Freyr Technology AI is an AI infrastructure and model API service company. The website describes high-performance GPU infrastructure, text and image generation model access, API documentation, GPU solutions, bare metal leasing, deployment services, privacy information, and contact channels.
+Freyr Technology AI is an AI infrastructure and model API service company. The website describes high-performance GPU infrastructure, text and image generation model access, API documentation, GPU solutions, bare metal leasing, deployment services, and privacy information.
 
 Key pages:
 
@@ -10,14 +10,6 @@ Key pages:
 - API Docs: https://www.freyrtech.ai/api.html
 - Solutions: https://www.freyrtech.ai/solutions.html
 - Privacy Policy: https://www.freyrtech.ai/privacy.html
-- Contact: https://www.freyrtech.ai/contact.html
-
-Contact:
-
-- Email: ContactUS@freyrtech.ai
-- Phone: +65 89585382
-- Address: U-Club Prudential Tower 30 Cecil Street Level #14-01 Prudential Tower, Singapore 049712
-
 Machine-readable resources:
 
 - Model catalog fallback: https://www.freyrtech.ai/assets/models.json
