@@ -646,6 +646,17 @@ h3 {
   margin-top: 2px;
 }
 
+.playground-header-field {
+  margin-top: 0;
+}
+
+.playground-header-input {
+  min-height: 116px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .playground-code {
   margin-top: 0;
   max-width: 100%;

@@ -57,7 +57,7 @@
               <div class="playground-main">
                 <span class="kicker">Playground</span>
                 <h2>Test model parameters before integration</h2>
-                <p>Choose a model, write a prompt, adjust generation parameters, inspect the request payload, and call chat completions directly from the static page using local configuration.</p>
+                <p>Choose a model, write a prompt, adjust generation parameters, inspect the request payload, and call chat completions directly from the static page with pasted request headers.</p>
 
                 <div class="playground-field">
                   <label for="playgroundModel">Model</label>
@@ -122,6 +122,10 @@
                   <input id="enableThinking" type="checkbox">
                   <span>Enable thinking</span>
                 </label>
+                <div class="playground-field playground-header-field">
+                  <label for="playgroundHeaders">Request headers</label>
+                  <textarea id="playgroundHeaders" class="playground-input playground-header-input" rows="5" spellcheck="false" placeholder="CF-Access-Client-Id: YOUR_CLIENT_ID&#10;CF-Access-Client-Secret: YOUR_CLIENT_SECRET&#10;Authorization: Bearer YOUR_API_KEY"></textarea>
+                </div>
                 <div class="code-block playground-code">
                   <button class="copy-button" type="button" data-copy="playgroundRequest">Copy</button>
                   <pre id="playgroundRequest"><code></code></pre>

@@ -137,6 +137,8 @@ const MODEL_FALLBACK = [
   }
 ];
 
+const DEFAULT_API_BASE_URL = "https://test.token-exchange-ai.com/api/native/v1";
+
 const PRICING_FALLBACK = {
   updatedAt: "2026-05-13",
   currency: "USD",
@@ -167,6 +169,7 @@ const state = {
   priceSort: "category",
   lang: localStorage.getItem("freyrLang") || "en",
   playgroundModelId: "deepseek-ai/DeepSeek-R1",
+  playgroundHeaders: "",
   apiStatus: {
     models: { type: "loading", detail: "" },
     pricing: { type: "loading", detail: "" }
@@ -229,13 +232,14 @@ const TEXT_ZH = {
   "Live model API loaded.": "实时模型 API 已加载。",
   "Live API unavailable; showing built-in fallback data.": "实时 API 不可用，正在显示内置兜底数据。",
   "Missing static API config; showing built-in fallback data.": "缺少静态 API 配置，正在显示内置兜底数据。",
-  "Browser direct request was blocked. Enable CORS in Cloudflare/API for this static origin and custom headers.": "浏览器直连请求被拦截。请在 Cloudflare/API 中为当前静态来源和自定义请求头开启 CORS。",
+  "Browser direct request was blocked. Enable CORS in Cloudflare/API for this static origin.": "浏览器直连请求被拦截。请在 Cloudflare/API 中为当前静态来源开启 CORS。",
   "Filter by category, provider, and capability. This static prototype reads from a local JSON model endpoint and can later point to an approved public catalog API.": "按分类、供应商和能力筛选。本静态原型从本地 JSON 模型接口读取，后续可替换为批准的公开目录 API。",
   "Filter by category, provider, and capability. The page loads model data through a local proxy backed by Freyr's native model info API.": "按分类、供应商和能力筛选。页面通过本地代理加载 Freyr native model info API 的模型数据。",
   "Playground": "调试台",
   "Test model parameters before integration": "集成前测试模型参数",
   "Choose a model, write a prompt, adjust generation parameters, and inspect the request payload. This static prototype generates a safe request preview and simulated response without sending secrets from the browser.": "选择模型、编写 prompt、调整生成参数并检查请求 payload。本静态原型只生成安全的请求预览和模拟响应，不从浏览器发送密钥。",
   "Choose a model, write a prompt, adjust generation parameters, inspect the request payload, and call chat completions through the local proxy without exposing secrets in the browser.": "选择模型、编写 prompt、调整生成参数、检查请求 payload，并通过本地代理调用 chat completions，不在浏览器暴露密钥。",
+  "Choose a model, write a prompt, adjust generation parameters, inspect the request payload, and call chat completions directly from the static page with pasted request headers.": "选择模型、编写 prompt、调整生成参数、检查请求 payload，并用粘贴的请求头从静态页面直接调用 chat completions。",
   "Model": "模型",
   "System prompt": "系统提示词",
   "Prompt": "提示词",
@@ -247,6 +251,7 @@ const TEXT_ZH = {
   "Image size": "图片尺寸",
   "Stream response": "流式响应",
   "Enable thinking": "启用思考",
+  "Request headers": "请求头",
   "Proxy required": "需要本地代理",
   "API config required": "需要 API 配置",
   "Request failed": "请求失败",
@@ -451,7 +456,8 @@ const PLACEHOLDER_ZH = {
   "Search by model, provider, or capability": "按模型、供应商或能力搜索",
   "Search by model or provider": "按模型或供应商搜索",
   "H100, H200, GB200, text/image models": "H100、H200、GB200、文本/图片模型",
-  "Tell us about workload size, traffic, latency target, region, deployment constraints, and budget range if available.": "请说明工作负载规模、流量、延迟目标、区域、部署约束和预算范围。"
+  "Tell us about workload size, traffic, latency target, region, deployment constraints, and budget range if available.": "请说明工作负载规模、流量、延迟目标、区域、部署约束和预算范围。",
+  "CF-Access-Client-Id: YOUR_CLIENT_ID\nCF-Access-Client-Secret: YOUR_CLIENT_SECRET\nAuthorization: Bearer YOUR_API_KEY": "CF-Access-Client-Id: YOUR_CLIENT_ID\nCF-Access-Client-Secret: YOUR_CLIENT_SECRET\nAuthorization: Bearer YOUR_API_KEY"
 };
 
 function translateText(text, lang) {
@@ -532,17 +538,16 @@ function initChrome() {
 }
 
 function apiConfig() {
-  return window.FREYR_API_CONFIG || {};
-}
-
-function isLocalDevelopmentHost() {
-  return ["localhost", "127.0.0.1", "[::1]", "::1"].includes(location.hostname);
+  return {
+    baseUrl: DEFAULT_API_BASE_URL,
+    ...(window.FREYR_API_CONFIG || {})
+  };
 }
 
 function friendlyApiError(error) {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/failed to fetch|load failed|network|cors/i.test(message)) {
-    return "Browser direct request was blocked. Enable CORS in Cloudflare/API for this static origin and custom headers.";
+    return "Browser direct request was blocked. Enable CORS in Cloudflare/API for this static origin.";
   }
   return message || "Unknown API error.";
 }
@@ -581,17 +586,26 @@ function categoryConfig() {
 
 function hasStaticApiConfig() {
   const config = apiConfig();
-  return Boolean(config.baseUrl && config.authorization && config.cfAccessClientId && config.cfAccessClientSecret);
+  return Boolean(config.baseUrl);
 }
 
-function directApiHeaders(extra = {}) {
-  const config = apiConfig();
-  return {
-    authorization: config.authorization,
-    "cf-access-client-id": config.cfAccessClientId,
-    "cf-access-client-secret": config.cfAccessClientSecret,
-    ...extra
-  };
+function parseHeaderLines(value) {
+  return String(value || "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .reduce((headers, line) => {
+      const separatorIndex = line.indexOf(":");
+      if (separatorIndex <= 0) return headers;
+      const name = line.slice(0, separatorIndex).trim();
+      const headerValue = line.slice(separatorIndex + 1).trim();
+      if (name && headerValue) headers[name] = headerValue;
+      return headers;
+    }, {});
+}
+
+function playgroundHeaders() {
+  return parseHeaderLines(byId("playgroundHeaders")?.value || state.playgroundHeaders);
 }
 
 function providerFromModel(modelName) {
@@ -672,34 +686,14 @@ function normalizeModelInfo(upstream) {
 async function fetchDirectModelInfo() {
   if (!hasStaticApiConfig()) throw new Error("Missing static API config");
   const config = apiConfig();
-  const response = await fetch(`${config.baseUrl}/model/info`, {
-    headers: directApiHeaders()
-  });
+  const response = await fetch(`${config.baseUrl}/model/info`);
   if (!response.ok) throw new Error(`Model info request failed with status ${response.status}`);
   return normalizeModelInfo(await response.json());
-}
-
-async function fetchLocalModelInfo() {
-  const response = await fetch("api/model-info", { cache: "no-store" });
-  if (!response.ok) throw new Error(`Local model proxy failed with status ${response.status}`);
-  const data = await response.json();
-  return Array.isArray(data.models) && Array.isArray(data.prices) ? data : normalizeModelInfo(data);
 }
 
 async function loadModels() {
   setApiStatus("models", "loading");
   let lastError;
-
-  if (isLocalDevelopmentHost()) {
-    try {
-      const data = await fetchLocalModelInfo();
-      if (Array.isArray(data.prices)) state.pricing = { ...PRICING_FALLBACK, ...data, prices: data.prices };
-      setApiStatus("models", "live");
-      return Array.isArray(data.models) ? data.models : MODEL_FALLBACK;
-    } catch (error) {
-      lastError = error;
-    }
-  }
 
   if (hasStaticApiConfig()) {
     try {
@@ -731,16 +725,6 @@ async function loadModels() {
 async function loadPricing() {
   setApiStatus("pricing", "loading");
   let lastError;
-
-  if (isLocalDevelopmentHost()) {
-    try {
-      const data = await fetchLocalModelInfo();
-      setApiStatus("pricing", "live");
-      return data;
-    } catch (error) {
-      lastError = error;
-    }
-  }
 
   if (hasStaticApiConfig()) {
     try {
@@ -901,6 +885,10 @@ function playgroundPayload() {
   if (model.category === "image") {
     return {
       endpoint: "POST /v1/images/generations",
+      headers: {
+        "Content-Type": "application/json",
+        ...playgroundHeaders()
+      },
       body: {
         model: model.id,
         prompt,
@@ -913,6 +901,10 @@ function playgroundPayload() {
 
   return {
     endpoint: "POST /v1/chat/completions",
+    headers: {
+      "Content-Type": "application/json",
+      ...playgroundHeaders()
+    },
     body: {
       model: model.id,
       messages: [
@@ -965,7 +957,15 @@ function updatePlayground() {
   const request = playgroundPayload();
   const requestNode = byId("playgroundRequest");
   if (requestNode) {
-    requestNode.textContent = `${request.endpoint}\n\n${JSON.stringify(request.body, null, 2)}`;
+    requestNode.textContent = [
+      request.endpoint,
+      "",
+      "Headers",
+      JSON.stringify(request.headers, null, 2),
+      "",
+      "Body",
+      JSON.stringify(request.body, null, 2)
+    ].join("\n");
   }
 }
 
@@ -1027,28 +1027,14 @@ async function readJsonResponse(response) {
   if (json.usage) renderUsage(json.usage);
 }
 
-async function fetchChatCompletion(body) {
+async function fetchChatCompletion(request) {
+  const body = request.body;
   const payload = JSON.stringify(body);
-
-  if (isLocalDevelopmentHost()) {
-    const localResponse = await fetch("api/chat/completions", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
-      },
-      body: payload
-    });
-    if (localResponse.ok || localResponse.status !== 404) return localResponse;
-  }
 
   if (!hasStaticApiConfig()) throw new Error("Missing static API config");
   return fetch(`${apiConfig().baseUrl}/chat/completions`, {
     method: "POST",
-    headers: {
-      ...directApiHeaders({
-        "content-type": "application/json"
-      })
-    },
+    headers: request.headers,
     body: payload
   });
 }
@@ -1083,7 +1069,7 @@ async function runPlaygroundPreview() {
   `;
 
   try {
-    const response = await fetchChatCompletion(request.body);
+    const response = await fetchChatCompletion(request);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1127,10 +1113,16 @@ function initPlayground() {
     updatePlayground();
   });
 
-  ["maxTokens", "temperature", "topP", "imageSize", "streamResponse", "enableThinking", "systemPrompt", "userPrompt"].forEach((id) => {
+  ["maxTokens", "temperature", "topP", "imageSize", "streamResponse", "enableThinking", "systemPrompt", "userPrompt", "playgroundHeaders"].forEach((id) => {
     const input = byId(id);
-    input?.addEventListener("input", updatePlayground);
-    input?.addEventListener("change", updatePlayground);
+    input?.addEventListener("input", () => {
+      if (id === "playgroundHeaders") state.playgroundHeaders = input.value;
+      updatePlayground();
+    });
+    input?.addEventListener("change", () => {
+      if (id === "playgroundHeaders") state.playgroundHeaders = input.value;
+      updatePlayground();
+    });
   });
 
   byId("runPlayground")?.addEventListener("click", runPlaygroundPreview);
