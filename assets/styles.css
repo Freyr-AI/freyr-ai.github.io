@@ -671,14 +671,15 @@ h3 {
 
 .playground-result {
   display: grid;
-  gap: 6px;
+  gap: 10px;
   max-width: 100%;
-  min-height: 86px;
-  padding: 16px;
-  border: 1px solid rgba(38, 217, 196, 0.34);
+  min-height: 132px;
+  padding: 18px;
+  border: 1px solid rgba(5, 93, 213, 0.28);
   border-radius: 8px;
-  color: #254356;
-  background: rgba(38, 217, 196, 0.12);
+  color: #1e3a4f;
+  background: linear-gradient(180deg, #ffffff 0%, #eef8ff 100%);
+  box-shadow: 0 12px 32px rgba(5, 93, 213, 0.1);
   font-size: 14px;
   overflow: hidden;
   overflow-wrap: anywhere;

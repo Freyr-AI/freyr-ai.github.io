@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="assets/styles.css">
     <script src="config/api.local.js"></script>
     <script src="config/model-categories.js"></script>
-    <script defer src="assets/app.js?v=20260515-contact-cookie"></script>
+    <script defer src="assets/app.js?v=20260515-result-first"></script>
   </head>
   <body data-page="models">
     <div class="site-shell">
@@ -124,12 +124,12 @@
                   <label for="playgroundHeaders">Request headers</label>
                   <textarea id="playgroundHeaders" class="playground-input playground-header-input" rows="5" spellcheck="false" placeholder="CF-Access-Client-Id: YOUR_CLIENT_ID&#10;CF-Access-Client-Secret: YOUR_CLIENT_SECRET&#10;Authorization: Bearer YOUR_API_KEY"></textarea>
                 </div>
+                <div class="playground-result" id="playgroundResult" aria-live="polite">
+                  Configure a model and generate a preview.
+                </div>
                 <div class="code-block playground-code">
                   <button class="copy-button" type="button" data-copy="playgroundRequest">Copy</button>
                   <pre id="playgroundRequest"><code></code></pre>
-                </div>
-                <div class="playground-result" id="playgroundResult" aria-live="polite">
-                  Configure a model and generate a preview.
                 </div>
               </aside>
             </div>
