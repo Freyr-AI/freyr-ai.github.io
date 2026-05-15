@@ -3,15 +3,106 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Redirecting to Pricing | Freyr Technology AI</title>
-    <meta name="robots" content="noindex">
-    <meta http-equiv="refresh" content="0; url=pricing.html">
-    <link rel="canonical" href="https://www.freyrtech.ai/pricing.html">
-    <script>
-      window.location.replace("pricing.html");
-    </script>
+    <title>Model Pricing | Freyr Technology AI</title>
+    <meta name="description" content="Freyr Technology AI model pricing page for text and image generation models.">
+    <link rel="icon" type="image/png" href="assets/icon.png">
+    <link rel="apple-touch-icon" href="assets/icon.png">
+    <link rel="stylesheet" href="assets/styles.css?v=20260515-loading-state">
+    <script src="config/api.local.js"></script>
+    <script src="config/model-categories.js"></script>
+    <script defer src="assets/app.js?v=20260515-loading-state"></script>
   </head>
-  <body>
-    <p><a href="pricing.html">Continue to pricing</a></p>
+  <body data-page="pricing">
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="container nav">
+          <a class="brand" href="pricing.html" aria-label="Freyr Technology AI pricing">
+            <img src="https://www.freyrtech.ai/images/logo.png" alt="Freyr Technology AI">
+          </a>
+          <nav class="nav-links" aria-label="Primary navigation">
+            <a class="nav-link" data-nav="pricing" href="pricing.html">Pricing</a>
+            <a class="nav-link" data-nav="privacy" href="privacy.html">Privacy</a>
+            <a class="nav-link" data-nav="terms" href="terms.html">Terms</a>
+          </nav>
+          <div class="nav-actions">
+            <button class="menu-button" type="button" aria-label="Open menu" aria-expanded="false">
+              <span></span><span></span><span></span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="page-hero">
+          <div class="container">
+            <span class="eyebrow">Model pricing</span>
+            <h1>Transparent pricing for text and image generation models</h1>
+            <p>Pricing is loaded directly from Freyr's native model info API and normalized in the browser for static access.</p>
+            <div class="api-status is-loading" data-api-status="pricing">Loading live pricing API...</div>
+          </div>
+        </section>
+
+        <section class="section section-muted">
+          <div class="container">
+            <div class="pricing-summary" data-pricing-summary></div>
+
+            <div class="model-toolbar" aria-label="Pricing filters">
+              <div class="segmented" role="group" aria-label="Pricing category">
+                <button class="is-active" type="button" data-price-category="all">All</button>
+                <button type="button" data-price-category="text">Text</button>
+                <button type="button" data-price-category="image">Image</button>
+              </div>
+              <input id="pricingSearch" class="search" type="search" placeholder="Search by model or provider" aria-label="Search pricing">
+              <select id="pricingSort" class="select" aria-label="Sort pricing">
+                <option value="category">Category</option>
+                <option value="name">Name A-Z</option>
+                <option value="price">Lowest price</option>
+              </select>
+            </div>
+
+            <div class="pricing-table-card">
+              <div class="pricing-table-head">
+                <div>
+                  <span class="kicker">Live pricing catalog</span>
+                  <h2>Model price list</h2>
+                </div>
+                <p id="pricingUpdated">Loading pricing...</p>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Model</th>
+                      <th>Category</th>
+                      <th>Provider</th>
+                      <th>Input</th>
+                      <th>Output / Image</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody data-pricing-table></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="callout">Pricing is loaded directly from the public model info API and normalized from token cost fields.</div>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <div class="container footer-main">
+          <div class="footer-brand">
+            <img src="https://www.freyrtech.ai/images/footer-logo.png" alt="Freyr Technology AI">
+            <p>Your trusted partner for GPU high performance computing and AI model infrastructure.</p>
+          </div>
+          <div class="footer-col"><h3>Pricing</h3><a href="pricing.html">Model Pricing</a></div>
+          <div class="footer-col"><h3>Legal</h3><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Use</a><a href="mailto:tokens@freyrtech.ai">Contact Us</a></div>
+        </div>
+        <div class="container footer-bottom">
+          <span>Copyright © <span data-year></span> FREYR</span>
+        </div>
+      </footer>
+    </div>
   </body>
 </html>

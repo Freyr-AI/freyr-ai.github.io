@@ -4,11 +4,11 @@ Freyr Technology AI presents itself as a high-performance computing service prov
 
 ## Website Purpose
 
-The site is a static, no-database website for visitors reviewing model pricing and legal terms. Home, model catalog, API docs, and solutions pages redirect to pricing.
+The site is a static, no-database website for visitors reviewing model pricing and legal terms. The home page now presents the pricing experience directly; model catalog, API docs, and solutions pages redirect to pricing.
 
 ## Primary Content
 
-The Pricing page presents text and image generation model prices loaded from Freyr's public model info API. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
+The home Pricing page presents text and image generation model prices loaded from Freyr's public model info API. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
 
 The Privacy Policy page describes personal data processing for Freyr AI services.
 

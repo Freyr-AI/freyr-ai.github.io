@@ -4,7 +4,7 @@ Freyr Technology AI is an AI infrastructure and model API service company. The p
 
 Key pages:
 
-- Pricing: https://www.freyrtech.ai/pricing.html
+- Pricing: https://www.freyrtech.ai/
 - Privacy Policy: https://www.freyrtech.ai/privacy.html
 - Terms of Use: https://www.freyrtech.ai/terms.html
 
