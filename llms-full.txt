@@ -1,16 +1,18 @@
 # Freyr Technology AI Website Context
 
-Freyr Technology AI presents itself as a high-performance computing service provider focused on advanced and customized computing resources for AI model training and inference. The public website is currently reduced to model pricing and privacy information.
+Freyr Technology AI presents itself as a high-performance computing service provider focused on advanced and customized computing resources for AI model training and inference. The public website is currently reduced to model pricing, privacy information, and terms of use.
 
 ## Website Purpose
 
-The site is a static, no-database website for visitors reviewing model pricing. Home, model catalog, API docs, and solutions pages redirect to pricing.
+The site is a static, no-database website for visitors reviewing model pricing and legal terms. Home, model catalog, API docs, and solutions pages redirect to pricing.
 
 ## Primary Content
 
 The Pricing page presents text and image generation model prices loaded from Freyr's public model info API, with static fallback data available in `/assets/pricing.json`.
 
-The Privacy Policy page is draft legal copy for review. It should not be treated as final legal advice.
+The Privacy Policy page describes personal data processing for Freyr AI services.
+
+The Terms of Use page describes the terms governing access to and use of Freyr AI services.
 
 ## Important Caveats
 
