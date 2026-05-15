@@ -932,10 +932,8 @@ function renderPricingSummary(prices) {
   if (!summary) return;
 
   const textPrices = prices.filter((item) => item.category === "text");
-  const imagePrices = prices.filter((item) => item.category === "image");
   const lowestInput = minDefined(textPrices.map((item) => item.inputPerMillionTokens));
   const lowestOutput = minDefined(textPrices.map((item) => item.outputPerMillionTokens));
-  const lowestImage = minDefined(imagePrices.map((item) => item.pricePerImage));
 
   summary.innerHTML = `
     <article class="card price-card">
@@ -947,16 +945,6 @@ function renderPricingSummary(prices) {
       <span class="badge">${label("Text output")}</span>
       <strong>${label("From")} ${usd(lowestOutput)}</strong>
       <p>${label("per 1M tokens")}</p>
-    </article>
-    <article class="card price-card">
-      <span class="badge badge-cyan">${label("Image generation")}</span>
-      <strong>${label("From")} ${usd(lowestImage)}</strong>
-      <p>${label("per image")}</p>
-    </article>
-    <article class="card price-card">
-      <span class="badge badge-amber">${label("Enterprise")}</span>
-      <strong>${label("Contact Sales")}</strong>
-      <p>${label("Contact sales for committed capacity, private deployment, and discounted volume pricing.")}</p>
     </article>
   `;
 }
