@@ -1,22 +1,14 @@
 # Freyr Technology AI Website Context
 
-Freyr Technology AI presents itself as a high-performance computing service provider focused on advanced and customized computing resources for AI model training and inference. The website combines the company's legacy GPU infrastructure positioning with a new model catalog and API documentation experience.
+Freyr Technology AI presents itself as a high-performance computing service provider focused on advanced and customized computing resources for AI model training and inference. The public website is currently reduced to model pricing and privacy information.
 
 ## Website Purpose
 
-The site is a static, no-database website for enterprise visitors evaluating GPU infrastructure, bare metal GPU leasing, deployment services, and AI model API access. It is designed to be precise, technical, and trustworthy.
+The site is a static, no-database website for visitors reviewing model pricing. Home, model catalog, API docs, and solutions pages redirect to pricing.
 
 ## Primary Content
 
-The home page introduces Freyr as a provider of high-performance GPU infrastructure for model inference and training. It links to a model catalog, API documentation, solutions, and privacy information.
-
-The Models page presents a model catalog with text models and image generation models. The prototype loads from a static JSON file at `/assets/models.json`. Production should replace or synchronize this catalog from an approved Freyr or provider endpoint that does not expose private API credentials in browser code.
-
-The Pricing page presents text and image generation model prices loaded from `/assets/pricing.json`. The numeric values are prototype interface data and should be replaced with Freyr-approved official pricing before publication.
-
-The API Docs page explains the intended integration structure for model discovery, text generation, image generation, authentication, errors, and support. Endpoint and authentication details must be confirmed by Freyr before publication.
-
-The Solutions page summarizes GPU Solution, Bare Metal Leasing, and Delivery Service. It also includes a workload matrix for training, inference, computer vision, rendering, and enterprise evaluation.
+The Pricing page presents text and image generation model prices loaded from Freyr's public model info API, with static fallback data available in `/assets/pricing.json`.
 
 The Privacy Policy page is draft legal copy for review. It should not be treated as final legal advice.
 

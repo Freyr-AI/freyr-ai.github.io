@@ -1,15 +1,12 @@
 # Freyr Technology AI
 
-Freyr Technology AI is an AI infrastructure and model API service company. The website describes high-performance GPU infrastructure, text and image generation model access, API documentation, GPU solutions, bare metal leasing, deployment services, and privacy information.
+Freyr Technology AI is an AI infrastructure and model API service company. The public website currently presents model pricing and privacy information only.
 
 Key pages:
 
-- Home: https://www.freyrtech.ai/
-- Models: https://www.freyrtech.ai/models.html
 - Pricing: https://www.freyrtech.ai/pricing.html
-- API Docs: https://www.freyrtech.ai/api.html
-- Solutions: https://www.freyrtech.ai/solutions.html
 - Privacy Policy: https://www.freyrtech.ai/privacy.html
+
 Machine-readable resources:
 
 - Model catalog fallback: https://www.freyrtech.ai/assets/models.json

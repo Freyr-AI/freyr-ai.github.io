@@ -154,17 +154,6 @@ button {
   gap: 10px;
 }
 
-.language-select {
-  min-height: 42px;
-  padding: 8px 28px 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  color: var(--ink);
-  background: var(--white);
-  font-size: 13px;
-  font-weight: 800;
-}
-
 .menu-button {
   display: none;
   width: 42px;
