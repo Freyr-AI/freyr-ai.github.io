@@ -1341,6 +1341,18 @@ body[data-page="terms"] .page-hero + .section {
   color: var(--ink-soft);
 }
 
+.legal-content a {
+  color: var(--action-blue);
+  font-weight: 720;
+  text-decoration: underline;
+  text-decoration-color: rgba(5, 93, 213, 0.28);
+  text-underline-offset: 3px;
+}
+
+.legal-content a:hover {
+  text-decoration-color: currentColor;
+}
+
 .search:focus,
 .select:focus {
   outline: 3px solid rgba(5, 93, 213, 0.15);
