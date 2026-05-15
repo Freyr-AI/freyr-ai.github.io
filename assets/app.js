@@ -140,28 +140,16 @@ const MODEL_FALLBACK = [
 const DEFAULT_API_BASE_URL = "https://test.token-exchange-ai.com/api/native/v1";
 const PLAYGROUND_HEADERS_COOKIE = "freyrPlaygroundHeaders";
 
-const PRICING_FALLBACK = {
-  updatedAt: "2026-05-13",
+const EMPTY_PRICING = {
+  updatedAt: "",
   currency: "USD",
-  sourceNote: "Prototype pricing endpoint for the static Freyr website. Replace with Freyr-approved live pricing before production.",
-  prices: [
-    { modelId: "deepseek-ai/DeepSeek-R1", displayName: "DeepSeek R1", category: "text", provider: "DeepSeek", inputPerMillionTokens: 0.55, outputPerMillionTokens: 2.19, unit: "1M tokens", status: "available" },
-    { modelId: "gpt-5", displayName: "GPT-5", category: "text", provider: "OpenAI Compatible", inputPerMillionTokens: 1.25, outputPerMillionTokens: 10, unit: "1M tokens", status: "available" },
-    { modelId: "models/gemini-2.5-pro", displayName: "Gemini 2.5 Pro", category: "text", provider: "Gemini Compatible", inputPerMillionTokens: 1.25, outputPerMillionTokens: 10, unit: "1M tokens", status: "available" },
-    { modelId: "models/gemini-2.5-flash", displayName: "Gemini 2.5 Flash", category: "text", provider: "Gemini Compatible", inputPerMillionTokens: 0.3, outputPerMillionTokens: 2.5, unit: "1M tokens", status: "available" },
-    { modelId: "gemini-2.5-flash-image", displayName: "Gemini 2.5 Flash Image", category: "image", provider: "Gemini Compatible", pricePerImage: 0.04, unit: "image", status: "available" },
-    { modelId: "gemini-3-pro-image", displayName: "Gemini 3 Pro Image", category: "image", provider: "Gemini Compatible", pricePerImage: 0.08, unit: "image", status: "available" },
-    { modelId: "black-forest-labs/flux.1-dev", displayName: "FLUX.1 Dev", category: "image", provider: "Black Forest Labs", pricePerImage: 0.035, unit: "image", status: "available" },
-    { modelId: "black-forest-labs/flux-kontext-pro", displayName: "FLUX Kontext Pro", category: "image", provider: "Black Forest Labs", pricePerImage: 0.06, unit: "image", status: "available" },
-    { modelId: "Qwen/Qwen-Image", displayName: "Qwen Image", category: "image", provider: "Qwen", pricePerImage: 0.03, unit: "image", status: "available" },
-    { modelId: "Qwen/Qwen-Image-Edit", displayName: "Qwen Image Edit", category: "image", provider: "Qwen", pricePerImage: 0.045, unit: "image", status: "available" },
-    { modelId: "gpt-image-1.5", displayName: "GPT Image 1.5", category: "image", provider: "OpenAI Compatible", pricePerImage: 0.08, unit: "image", status: "available" }
-  ]
+  sourceNote: "",
+  prices: []
 };
 
 const state = {
   models: MODEL_FALLBACK,
-  pricing: PRICING_FALLBACK,
+  pricing: EMPTY_PRICING,
   category: "all",
   query: "",
   sort: "recommended",
@@ -248,8 +236,8 @@ function friendlyApiError(error) {
 function apiStatusText(scope) {
   const status = state.apiStatus[scope] || { type: "loading", detail: "" };
   if (status.type === "live") return label(scope === "pricing" ? "Live pricing API loaded." : "Live model API loaded.");
-  if (status.type === "missing-config") return label("Missing static API config; showing built-in fallback data.");
-  if (status.type === "fallback") return `${label("Live API unavailable; showing built-in fallback data.")} ${label(status.detail)}`;
+  if (status.type === "missing-config") return label("Missing static API config; live data is unavailable.");
+  if (status.type === "fallback") return `${label("Live API unavailable.")} ${label(status.detail)}`;
   return label(scope === "pricing" ? "Loading live pricing API..." : "Loading live model API...");
 }
 
@@ -396,7 +384,7 @@ async function loadModels() {
   if (hasStaticApiConfig()) {
     try {
       const data = await fetchDirectModelInfo();
-      if (Array.isArray(data.prices)) state.pricing = { ...PRICING_FALLBACK, ...data, prices: data.prices };
+      if (Array.isArray(data.prices)) state.pricing = { ...EMPTY_PRICING, ...data, prices: data.prices };
       setApiStatus("models", "live");
       return Array.isArray(data.models) ? data.models : MODEL_FALLBACK;
     } catch (error) {
@@ -438,16 +426,7 @@ async function loadPricing() {
   }
 
   if (lastError) setApiStatus("pricing", "fallback", friendlyApiError(lastError));
-  if (!location.protocol.startsWith("http")) return PRICING_FALLBACK;
-
-  try {
-    const response = await fetch("assets/pricing.json", { cache: "no-store" });
-    if (!response.ok) throw new Error("Pricing unavailable");
-    const data = await response.json();
-    return Array.isArray(data.prices) ? data : PRICING_FALLBACK;
-  } catch {
-    return PRICING_FALLBACK;
-  }
+  return { ...EMPTY_PRICING, error: lastError ? friendlyApiError(lastError) : "Live pricing API is not configured." };
 }
 
 function label(text) {
@@ -931,6 +910,38 @@ function renderPricingSummary(prices) {
   const summary = document.querySelector("[data-pricing-summary]");
   if (!summary) return;
 
+  if (state.apiStatus.pricing?.type === "loading") {
+    summary.innerHTML = `
+      <article class="card price-card price-card-loading" aria-busy="true">
+        <span class="badge">${label("Text input")}</span>
+        <strong>${label("Loading")}</strong>
+        <p>${label("Fetching live pricing...")}</p>
+      </article>
+      <article class="card price-card price-card-loading" aria-busy="true">
+        <span class="badge">${label("Text output")}</span>
+        <strong>${label("Loading")}</strong>
+        <p>${label("Fetching live pricing...")}</p>
+      </article>
+    `;
+    return;
+  }
+
+  if (!prices.length) {
+    summary.innerHTML = `
+      <article class="card price-card price-card-empty">
+        <span class="badge">${label("Text input")}</span>
+        <strong>${label("Unavailable")}</strong>
+        <p>${label("Live pricing has not loaded.")}</p>
+      </article>
+      <article class="card price-card price-card-empty">
+        <span class="badge">${label("Text output")}</span>
+        <strong>${label("Unavailable")}</strong>
+        <p>${label("Live pricing has not loaded.")}</p>
+      </article>
+    `;
+    return;
+  }
+
   const textPrices = prices.filter((item) => item.category === "text");
   const lowestInput = minDefined(textPrices.map((item) => item.inputPerMillionTokens));
   const lowestOutput = minDefined(textPrices.map((item) => item.outputPerMillionTokens));
@@ -953,12 +964,41 @@ function renderPricing() {
   const table = document.querySelector("[data-pricing-table]");
   if (!table) return;
 
-  const prices = sortPrices(state.pricing.prices.filter(priceMatches));
-  renderPricingSummary(state.pricing.prices);
+  const pricingStatus = state.apiStatus.pricing?.type || "loading";
+  const pricingRows = Array.isArray(state.pricing.prices) ? state.pricing.prices : [];
+  const prices = sortPrices(pricingRows.filter(priceMatches));
+  renderPricingSummary(pricingRows);
 
   const updated = byId("pricingUpdated");
   if (updated) {
-    updated.textContent = `${label("Updated")} ${state.pricing.updatedAt} · ${state.pricing.currency}`;
+    updated.textContent = pricingStatus === "loading"
+      ? label("Loading live pricing...")
+      : state.pricing.updatedAt
+        ? `${label("Updated")} ${state.pricing.updatedAt} · ${state.pricing.currency}`
+        : label("Live pricing unavailable");
+  }
+
+  all("[data-price-category]").forEach((button) => {
+    button.disabled = pricingStatus === "loading";
+  });
+  const search = byId("pricingSearch");
+  if (search) search.disabled = pricingStatus === "loading";
+  const sort = byId("pricingSort");
+  if (sort) sort.disabled = pricingStatus === "loading";
+
+  if (pricingStatus === "loading") {
+    table.innerHTML = Array.from({ length: 4 }).map(() => `
+      <tr class="pricing-loading-row" aria-busy="true">
+        <td><span></span><span></span></td>
+        <td><span></span></td>
+        <td><span></span></td>
+        <td><span></span></td>
+        <td><span></span></td>
+        <td><span></span></td>
+      </tr>
+    `).join("");
+    applyTranslations();
+    return;
   }
 
   table.innerHTML = prices.length
@@ -975,7 +1015,7 @@ function renderPricing() {
         </tr>
       `;
     }).join("")
-    : `<tr><td colspan="6">${label("No pricing rows match the current filters.")}</td></tr>`;
+    : `<tr><td colspan="6">${label(pricingRows.length ? "No pricing rows match the current filters." : "Live pricing is unavailable. Please try again after the API is reachable.")}</td></tr>`;
 
   applyTranslations();
 }
@@ -1002,6 +1042,8 @@ function initPricing() {
     state.priceSort = sort.value;
     renderPricing();
   });
+
+  renderPricing();
 
   loadPricing().then((pricing) => {
     state.pricing = pricing;

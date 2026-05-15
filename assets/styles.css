@@ -756,6 +756,13 @@ body[data-page="pricing"] .model-toolbar {
   background: var(--action-blue);
 }
 
+.segmented button:disabled,
+.search:disabled,
+.select:disabled {
+  cursor: progress;
+  opacity: 0.62;
+}
+
 .search,
 .select {
   min-height: 42px;
@@ -801,6 +808,25 @@ body[data-page="pricing"] .model-toolbar {
 
 .price-card p {
   color: var(--slate);
+}
+
+.price-card-loading strong,
+.price-card-empty strong {
+  font-size: 26px;
+}
+
+.price-card-loading {
+  position: relative;
+  overflow: hidden;
+}
+
+.price-card-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.62), transparent);
+  animation: loading-sweep 1.4s infinite;
 }
 
 .pricing-table-card {
@@ -864,6 +890,28 @@ body[data-page="pricing"] .model-toolbar {
 [data-pricing-table] td span:not(.badge) {
   color: var(--muted);
   font-size: 12px;
+}
+
+.pricing-loading-row span {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef3f9 0%, #f7faff 45%, #eef3f9 100%);
+  background-size: 220% 100%;
+  animation: loading-shimmer 1.3s ease-in-out infinite;
+}
+
+.pricing-loading-row td:first-child span:first-child {
+  max-width: 180px;
+  height: 16px;
+  margin-bottom: 8px;
+}
+
+.pricing-loading-row td:first-child span:last-child {
+  max-width: 240px;
+  height: 12px;
 }
 
 .model-card {
@@ -979,6 +1027,21 @@ tbody tr {
 
 tbody tr:hover {
   background: #f9fbff;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    background-position: 120% 0;
+  }
+  100% {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes loading-sweep {
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 tr:last-child td {

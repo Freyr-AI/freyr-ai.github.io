@@ -11,5 +11,4 @@ Key pages:
 Machine-readable resources:
 
 - Model catalog fallback: https://www.freyrtech.ai/assets/models.json
-- Pricing fallback: https://www.freyrtech.ai/assets/pricing.json
 - Sitemap: https://www.freyrtech.ai/sitemap.xml

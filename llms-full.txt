@@ -8,7 +8,7 @@ The site is a static, no-database website for visitors reviewing model pricing a
 
 ## Primary Content
 
-The Pricing page presents text and image generation model prices loaded from Freyr's public model info API, with static fallback data available in `/assets/pricing.json`.
+The Pricing page presents text and image generation model prices loaded from Freyr's public model info API. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
 
 The Privacy Policy page describes personal data processing for Freyr AI services.
 
