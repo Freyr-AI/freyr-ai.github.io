@@ -137,7 +137,7 @@ const MODEL_FALLBACK = [
   }
 ];
 
-const DEFAULT_API_BASE_URL = "https://test.token-exchange-ai.com/api/native/v1";
+const DEFAULT_API_BASE_URL = "https://prod.token-exchange-ai.com/api/native/v1";
 const PLAYGROUND_HEADERS_COOKIE = "freyrPlaygroundHeaders";
 
 const EMPTY_PRICING = {
