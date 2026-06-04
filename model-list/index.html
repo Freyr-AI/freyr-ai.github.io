@@ -9,7 +9,17 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css">
-    <script defer src="app-media-prefix-20260604.js"></script>
+    <script defer src="app.js?v=20260604-test-domain"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        endpointFor = function endpointFor(category) {
+          if (category === "image") return "/api/native/freyr/v1/images/generations";
+          if (category === "video") return "/api/native/freyr/v1/videos";
+          if (category === "music") return "/api/native/freyr/v1/music/generations";
+          return "/api/native/v1/chat/completions";
+        };
+      }, { once: true });
+    </script>
   </head>
   <body>
     <div class="page-shell">
