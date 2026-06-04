@@ -80,7 +80,8 @@ const state = {
   category: "all",
   query: "",
   sort: "category",
-  lastPromptCategory: ""
+  lastPromptCategory: "",
+  playgroundOpen: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -335,7 +336,7 @@ function renderModels() {
   const models = sortedModels(state.models.filter(modelMatches));
   grid.innerHTML = models.length
     ? models.map((model) => `
-      <article class="model-card">
+      <article class="model-card ${state.playgroundOpen && model.id === state.selectedId ? "is-selected" : ""}">
         <header>
           <div>
             <span class="badge ${escapeHtml(model.category)}">${escapeHtml(model.category)}</span>
@@ -349,7 +350,7 @@ function renderModels() {
         <div class="price"><strong>Pricing</strong> ${escapeHtml(priceLabel(model))}</div>
         <div class="model-id">${escapeHtml(model.id)}</div>
         <div class="card-actions">
-          <button class="button primary" type="button" data-select-model="${escapeHtml(model.id)}">Open playground</button>
+          <button class="button primary" type="button" data-select-model="${escapeHtml(model.id)}">${state.playgroundOpen && model.id === state.selectedId ? "Playground open" : "Open playground"}</button>
         </div>
       </article>
     `).join("")
@@ -524,10 +525,29 @@ function renderModelSelect() {
 }
 
 function render() {
+  $(".workspace")?.classList.toggle("is-playground-open", state.playgroundOpen);
   renderCounts();
   renderModels();
   renderModelSelect();
   updatePlayground();
+}
+
+function openPlayground(modelId) {
+  state.selectedId = modelId;
+  state.playgroundOpen = true;
+  $(".workspace")?.classList.add("is-playground-open");
+  renderModels();
+  renderModelSelect();
+  updatePlayground();
+  requestAnimationFrame(() => {
+    $("#playground")?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
+}
+
+function closePlayground() {
+  state.playgroundOpen = false;
+  $(".workspace")?.classList.remove("is-playground-open");
+  renderModels();
 }
 
 function setResult(html) {
@@ -563,14 +583,81 @@ function absoluteUrl(value) {
   }
 }
 
-function stringsFromObject(value, matches, found = []) {
+function mediaUrlCandidates(value) {
+  if (!value) return [];
+  const text = String(value);
+  if (/^data:/i.test(text)) return [text];
+  if (/^https?:\/\//i.test(text)) return [text];
+  if (text.startsWith("/api/")) return [absoluteUrl(text)];
+  if (text.startsWith("/v1/")) {
+    return [
+      absoluteUrl(`/api/native/freyr${text}`),
+      absoluteUrl(text)
+    ];
+  }
+  if (text.startsWith("/outputs/")) {
+    return [
+      absoluteUrl(`/api/native/freyr${text}`),
+      absoluteUrl(text)
+    ];
+  }
+  if (text.startsWith("/")) return [absoluteUrl(text)];
+  return [];
+}
+
+function inferMediaType(value, key, category) {
+  const text = String(value || "").toLowerCase();
+  const name = String(key || "").toLowerCase();
+  if (/^data:image\//.test(text) || /\.(png|jpe?g|webp|gif)(\?|$)/.test(text) || /image|thumbnail|cover/.test(name)) return "image";
+  if (/^data:audio\//.test(text) || /\.(mp3|wav|m4a|flac|ogg)(\?|$)/.test(text) || /audio|music/.test(name)) return "audio";
+  if (/^data:video\//.test(text) || /\.(mp4|webm|mov)(\?|$)/.test(text) || /video/.test(name)) return "video";
+  if (category === "music") return "audio";
+  if (category === "video") return "video";
+  return category === "image" ? "image" : "download";
+}
+
+function collectMediaEntries(value, category, key = "", found = []) {
   if (typeof value === "string") {
-    if (matches(value)) found.push(value);
+    const lower = value.toLowerCase();
+    const keyLower = String(key || "").toLowerCase();
+    const looksLikeMedia =
+      /^data:(image|audio|video)\//.test(lower)
+      || /^https?:\/\//.test(lower)
+      || /\/(v1|outputs)\//.test(lower)
+      || /\.(png|jpe?g|webp|gif|mp3|wav|m4a|flac|ogg|mp4|webm|mov)(\?|$)/.test(lower)
+      || /url|uri|href|audio|video|image|thumbnail|cover/.test(keyLower);
+
+    if (looksLikeMedia && !/^\/sgl-workspace\//.test(value)) {
+      mediaUrlCandidates(value).forEach((url) => {
+        found.push({ type: inferMediaType(value, key, category), url });
+      });
+    }
     return found;
   }
   if (!value || typeof value !== "object") return found;
-  Object.values(value).forEach((item) => stringsFromObject(item, matches, found));
+  Object.entries(value).forEach(([childKey, item]) => collectMediaEntries(item, category, childKey, found));
   return found;
+}
+
+function uniqueMediaEntries(entries) {
+  const seen = new Set();
+  return entries.filter((entry) => {
+    const key = `${entry.type}:${entry.url}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function downloadName(type, index, url) {
+  const extension = url.match(/\.(png|jpe?g|webp|gif|mp3|wav|m4a|flac|ogg|mp4|webm|mov)(?:\?|$)/i)?.[1];
+  const fallback = type === "video" ? "mp4" : type === "audio" ? "mp3" : type === "image" ? "png" : "bin";
+  return `freyr-${type}-${index + 1}.${extension || fallback}`;
+}
+
+function mediaDownloadButton(entry, index) {
+  const label = entry.type === "video" ? "Download video" : entry.type === "audio" ? "Download audio" : entry.type === "image" ? "Download image" : "Download file";
+  return `<button class="button secondary" type="button" data-download-url="${escapeHtml(entry.url)}" data-download-name="${escapeHtml(downloadName(entry.type, index, entry.url))}">${label}</button>`;
 }
 
 function renderMedia(json, category) {
@@ -580,20 +667,55 @@ function renderMedia(json, category) {
       .map((item) => item.b64_json ? `data:image/png;base64,${item.b64_json}` : item.url)
       .filter(Boolean);
     if (images.length) {
-      return `<div class="media-output">${images.map((url) => `<img alt="Generated image" src="${escapeHtml(absoluteUrl(url))}">`).join("")}</div>`;
+      const entries = uniqueMediaEntries(images.flatMap((url) => mediaUrlCandidates(url).map((candidate) => ({ type: "image", url: candidate }))));
+      return `<div class="media-output">${entries.map((entry, index) => `
+        <img alt="Generated image" src="${escapeHtml(entry.url)}">
+        <div class="media-actions">${mediaDownloadButton(entry, index)}</div>
+      `).join("")}</div>`;
     }
   }
 
-  const mediaMatches = category === "music"
-    ? (value) => /\.(mp3|wav|m4a)(\?|$)/i.test(value) || /\/outputs\//.test(value)
-    : (value) => /\.(mp4|webm|mov)(\?|$)/i.test(value) || /\/outputs\//.test(value);
-  const urls = stringsFromObject(json, mediaMatches).map(absoluteUrl);
-
-  if (!urls.length) return "";
+  const entries = uniqueMediaEntries(collectMediaEntries(json, category));
+  if (!entries.length) return "";
   if (category === "music") {
-    return `<div class="media-output">${urls.map((url) => `<audio controls src="${escapeHtml(url)}"></audio><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a>`).join("")}</div>`;
+    return `<div class="media-output">${entries.map((entry, index) => entry.type === "image"
+      ? `<img alt="Generated music artwork" src="${escapeHtml(entry.url)}"><div class="media-actions">${mediaDownloadButton(entry, index)}</div>`
+      : `<audio controls src="${escapeHtml(entry.url)}"></audio><div class="media-actions">${mediaDownloadButton(entry, index)}<a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a></div>`
+    ).join("")}</div>`;
   }
-  return `<div class="media-output">${urls.map((url) => `<video controls src="${escapeHtml(url)}"></video><a href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(url)}</a>`).join("")}</div>`;
+  return `<div class="media-output">${entries.map((entry, index) => entry.type === "image"
+    ? `<img alt="Generated video image" src="${escapeHtml(entry.url)}"><div class="media-actions">${mediaDownloadButton(entry, index)}</div>`
+    : `<video controls preload="metadata" src="${escapeHtml(entry.url)}"></video><div class="media-actions">${mediaDownloadButton(entry, index)}<a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a></div>`
+  ).join("")}</div>`;
+}
+
+async function downloadMedia(url, filename, button) {
+  const previous = button.textContent;
+  button.textContent = "Downloading...";
+  button.disabled = true;
+  try {
+    if (/^data:/i.test(url)) {
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      return;
+    }
+    const response = await fetch(url, { headers: playgroundHeaders(false) });
+    if (!response.ok) throw new Error(`Download failed with status ${response.status}`);
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = filename;
+    anchor.click();
+    URL.revokeObjectURL(objectUrl);
+  } catch {
+    window.open(url, "_blank", "noopener,noreferrer");
+  } finally {
+    button.textContent = previous;
+    button.disabled = false;
+  }
 }
 
 async function readStream(response) {
@@ -745,15 +867,23 @@ function bindEvents() {
   $("#modelGrid").addEventListener("click", (event) => {
     const button = event.target.closest("[data-select-model]");
     if (!button) return;
-    state.selectedId = button.dataset.selectModel;
-    renderModelSelect();
-    updatePlayground();
-    $("#playground").scrollIntoView({ behavior: "smooth", block: "start" });
+    openPlayground(button.dataset.selectModel);
   });
 
   $("#modelSelect").addEventListener("change", (event) => {
     state.selectedId = event.target.value;
+    state.playgroundOpen = true;
+    $(".workspace")?.classList.add("is-playground-open");
+    renderModels();
     updatePlayground();
+  });
+
+  $("#closePlayground")?.addEventListener("click", closePlayground);
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-download-url]");
+    if (!button) return;
+    downloadMedia(button.dataset.downloadUrl, button.dataset.downloadName || "freyr-output.bin", button);
   });
 
   [

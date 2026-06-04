@@ -305,9 +305,14 @@ textarea:focus {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
+  transition: grid-template-columns 180ms ease;
+}
+
+.workspace.is-playground-open {
+  grid-template-columns: minmax(300px, 0.42fr) minmax(520px, 0.78fr);
 }
 
 .catalog {
@@ -368,11 +373,20 @@ textarea:focus {
   gap: 16px;
 }
 
+.workspace.is-playground-open .model-grid {
+  grid-template-columns: 1fr;
+}
+
 .model-card {
   display: grid;
   gap: 14px;
   min-width: 0;
   padding: 18px;
+}
+
+.model-card.is-selected {
+  border-color: rgba(5, 93, 213, 0.42);
+  box-shadow: 0 20px 48px rgba(5, 93, 213, 0.12);
 }
 
 .model-card header {
@@ -416,14 +430,26 @@ textarea:focus {
 .playground {
   position: sticky;
   top: 18px;
-  display: grid;
+  display: none;
   gap: 12px;
   padding: 18px;
+}
+
+.workspace.is-playground-open .playground {
+  display: grid;
+  justify-self: center;
+  width: min(100%, 760px);
 }
 
 .playground-head {
   justify-content: space-between;
   align-items: start;
+}
+
+.playground-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .input {
@@ -507,6 +533,19 @@ textarea:focus {
   gap: 10px;
 }
 
+.media-output a {
+  color: var(--blue);
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .media-output img,
 .media-output video,
 .media-output audio {
@@ -526,6 +565,10 @@ textarea:focus {
 @media (max-width: 1120px) {
   .hero,
   .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace.is-playground-open {
     grid-template-columns: 1fr;
   }
 
