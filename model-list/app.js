@@ -1,5 +1,5 @@
-const DEFAULT_ORIGIN = "https://prod.token-exchange-ai.com";
-const ORIGIN_STORAGE_KEY = "freyrModelListApiOrigin";
+const DEFAULT_ORIGIN = "https://test.token-exchange-ai.com";
+const ORIGIN_STORAGE_KEY = "freyrModelListApiOriginTest";
 const HEADERS_STORAGE_KEY = "freyrModelListHeaders";
 const CATEGORY_ORDER = ["music", "image", "video", "text"];
 
