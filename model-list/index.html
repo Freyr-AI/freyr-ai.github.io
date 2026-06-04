@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Model List | Freyr Technology AI</title>
+    <meta name="description" content="Hidden Freyr Technology AI model catalog and API playground.">
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/png" href="../assets/icon.png">
+    <link rel="apple-touch-icon" href="../assets/icon.png">
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <a class="brand" href="../pricing.html" aria-label="Freyr Technology AI pricing">
+          <img src="https://www.freyrtech.ai/images/logo.png" alt="Freyr Technology AI">
+        </a>
+        <div class="topbar-meta">
+          <span class="pill">Hidden URL</span>
+          <span>prod.token-exchange-ai.com</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div>
+            <span class="eyebrow">Model list</span>
+            <h1>Live model catalog and playground</h1>
+            <p>Browse the production model API by modality, adjust request parameters, and test a selected model from one place.</p>
+          </div>
+          <form class="access-panel" id="accessForm">
+            <label for="apiOrigin">API domain</label>
+            <input id="apiOrigin" name="apiOrigin" type="url" value="https://prod.token-exchange-ai.com" autocomplete="off">
+            <label for="authHeaders">Request headers</label>
+            <textarea id="authHeaders" name="authHeaders" rows="4" spellcheck="false" placeholder="Authorization: Bearer <API_KEY>
+CF-Access-Client-Id: ...
+CF-Access-Client-Secret: ..."></textarea>
+            <div class="panel-actions">
+              <button class="button primary" type="submit">Reload authorized list</button>
+              <button class="button secondary" id="clearHeaders" type="button">Clear headers</button>
+            </div>
+            <p class="microcopy">Headers are saved only in this browser's local storage.</p>
+          </form>
+        </section>
+
+        <section class="status-strip" aria-live="polite">
+          <div>
+            <span class="metric" id="totalCount">-</span>
+            <span>Total models</span>
+          </div>
+          <div>
+            <span class="metric" id="musicCount">-</span>
+            <span>Music</span>
+          </div>
+          <div>
+            <span class="metric" id="imageCount">-</span>
+            <span>Image</span>
+          </div>
+          <div>
+            <span class="metric" id="videoCount">-</span>
+            <span>Video</span>
+          </div>
+          <div>
+            <span class="metric" id="textCount">-</span>
+            <span>Text</span>
+          </div>
+          <div class="api-state" id="apiStatus">Loading public model info...</div>
+        </section>
+
+        <section class="workspace">
+          <div class="catalog">
+            <div class="toolbar">
+              <div class="segmented" role="group" aria-label="Model category">
+                <button class="active" type="button" data-category="all">All</button>
+                <button type="button" data-category="music">Music</button>
+                <button type="button" data-category="image">Image</button>
+                <button type="button" data-category="video">Video</button>
+                <button type="button" data-category="text">Text</button>
+              </div>
+              <input id="searchModels" class="search" type="search" placeholder="Search model or provider" aria-label="Search models">
+              <select id="sortModels" class="select" aria-label="Sort models">
+                <option value="category">Category</option>
+                <option value="name">Name A-Z</option>
+                <option value="provider">Provider</option>
+              </select>
+            </div>
+            <div class="model-grid" id="modelGrid" aria-live="polite"></div>
+          </div>
+
+          <aside class="playground" id="playground">
+            <div class="playground-head">
+              <div>
+                <span class="eyebrow">Playground</span>
+                <h2 id="playgroundTitle">Select a model</h2>
+              </div>
+              <span class="pill" id="playgroundCategory">Text</span>
+            </div>
+
+            <label for="modelSelect">Model</label>
+            <select id="modelSelect" class="select wide"></select>
+
+            <label for="promptInput" id="promptLabel">Prompt</label>
+            <textarea id="promptInput" class="input" rows="5"></textarea>
+
+            <div class="field-group" data-panel="text">
+              <label for="systemPrompt">System prompt</label>
+              <textarea id="systemPrompt" class="input" rows="3">You are a concise AI infrastructure assistant.</textarea>
+              <div class="param-grid">
+                <label>Max tokens <input id="maxTokens" type="number" min="1" max="8192" step="1" value="256"></label>
+                <label>Temperature <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.2"></label>
+                <label>Top p <input id="topP" type="number" min="0" max="1" step="0.05" value="0.9"></label>
+                <label class="checkbox"><input id="streamResponse" type="checkbox"> Stream</label>
+              </div>
+            </div>
+
+            <div class="field-group" data-panel="image" hidden>
+              <div class="param-grid">
+                <label>Size <select id="imageSize"><option>1024x1024</option><option>768x768</option><option>512x512</option><option>256x256</option></select></label>
+                <label>Images <input id="imageCountInput" type="number" min="1" max="4" step="1" value="1"></label>
+                <label>Steps <input id="imageSteps" type="number" min="1" max="50" step="1" value="1"></label>
+                <label>Format <select id="imageFormat"><option value="url">url</option><option value="b64_json">b64_json</option></select></label>
+              </div>
+            </div>
+
+            <div class="field-group" data-panel="video" hidden>
+              <div class="param-grid">
+                <label>Size <select id="videoSize"><option>512x512</option><option>640x360</option><option>768x512</option><option>1280x720</option></select></label>
+                <label>FPS <input id="videoFps" type="number" min="1" max="30" step="1" value="8"></label>
+                <label>Frames <input id="videoFrames" type="number" min="1" max="160" step="1" value="9"></label>
+                <label>Steps <input id="videoSteps" type="number" min="1" max="50" step="1" value="1"></label>
+              </div>
+              <label for="referenceImage">Reference image</label>
+              <input id="referenceImage" class="input" type="file" accept="image/*">
+            </div>
+
+            <div class="field-group" data-panel="music" hidden>
+              <label for="musicTags">Music tags</label>
+              <input id="musicTags" class="input" type="text" value="ambient, cinematic">
+              <div class="param-grid">
+                <label>Length ms <input id="musicLength" type="number" min="500" max="30000" step="500" value="1000"></label>
+                <label>Temperature <input id="musicTemperature" type="number" min="0" max="2" step="0.1" value="0.8"></label>
+                <label>Top k <input id="musicTopK" type="number" min="1" max="200" step="1" value="50"></label>
+                <label>CFG scale <input id="musicCfg" type="number" min="0" max="20" step="0.5" value="4"></label>
+              </div>
+            </div>
+
+            <div class="panel-actions">
+              <button class="button primary" id="runPlayground" type="button">Run request</button>
+              <button class="button secondary" id="resetPlayground" type="button">Reset</button>
+            </div>
+
+            <div class="request-preview">
+              <div>
+                <strong>Request preview</strong>
+                <button class="copy-link" id="copyRequest" type="button">Copy</button>
+              </div>
+              <pre id="requestPreview"></pre>
+            </div>
+
+            <div class="result" id="resultBox">Ready.</div>
+          </aside>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>
