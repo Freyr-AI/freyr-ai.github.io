@@ -555,7 +555,7 @@ textarea:focus {
   background: #fff1f2;
 }
 
-.media-output a {
+.media-url {
   color: var(--blue);
   overflow-wrap: anywhere;
   font-size: 13px;
