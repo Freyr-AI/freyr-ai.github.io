@@ -162,9 +162,9 @@ function inferCategory(id) {
 }
 
 function endpointFor(category) {
-  if (category === "image") return "/freyr/v1/images/generations";
-  if (category === "video") return "/freyr/v1/videos";
-  if (category === "music") return "/freyr/v1/music/generations";
+  if (category === "image") return "/api/native/freyr/v1/images/generations";
+  if (category === "video") return "/api/native/freyr/v1/videos";
+  if (category === "music") return "/api/native/freyr/v1/music/generations";
   return "/api/native/v1/chat/completions";
 }
 
