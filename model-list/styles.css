@@ -533,6 +533,28 @@ textarea:focus {
   gap: 10px;
 }
 
+.media-item {
+  display: grid;
+  gap: 8px;
+}
+
+.media-frame {
+  display: grid;
+  min-height: 120px;
+  place-items: center;
+  padding: 16px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: #f8fafc;
+  text-align: center;
+}
+
+.media-frame.is-error {
+  color: #9f1239;
+  background: #fff1f2;
+}
+
 .media-output a {
   color: var(--blue);
   overflow-wrap: anywhere;

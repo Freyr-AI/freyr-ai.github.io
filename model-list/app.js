@@ -84,6 +84,9 @@ const state = {
   playgroundOpen: false
 };
 
+let mediaPreviewController = null;
+const mediaObjectUrls = new Set();
+
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
 
@@ -552,7 +555,10 @@ function closePlayground() {
 
 function setResult(html) {
   const result = $("#resultBox");
-  if (result) result.innerHTML = html;
+  if (!result) return;
+  clearMediaPreviews();
+  result.innerHTML = html;
+  hydrateAuthenticatedMedia(result);
 }
 
 function friendlyError(error) {
@@ -660,6 +666,104 @@ function mediaDownloadButton(entry, index) {
   return `<button class="button secondary" type="button" data-download-url="${escapeHtml(entry.url)}" data-download-name="${escapeHtml(downloadName(entry.type, index, entry.url))}">${label}</button>`;
 }
 
+function clearMediaPreviews() {
+  if (mediaPreviewController) mediaPreviewController.abort();
+  mediaPreviewController = null;
+  mediaObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  mediaObjectUrls.clear();
+}
+
+function previewLabel(type) {
+  if (type === "image") return "image";
+  if (type === "audio") return "audio";
+  if (type === "video") return "video";
+  return "media";
+}
+
+function mediaPreviewMarkup(entry) {
+  const safeUrl = escapeHtml(entry.url);
+  if (/^data:/i.test(entry.url)) {
+    if (entry.type === "image") return `<img alt="Generated image" src="${safeUrl}">`;
+    if (entry.type === "audio") return `<audio controls src="${safeUrl}"></audio>`;
+    if (entry.type === "video") return `<video controls preload="metadata" src="${safeUrl}"></video>`;
+  }
+
+  return `
+    <div class="media-frame" data-auth-media-url="${safeUrl}" data-media-type="${escapeHtml(entry.type)}">
+      <span class="media-status">Loading ${escapeHtml(previewLabel(entry.type))} preview with auth headers...</span>
+    </div>
+  `;
+}
+
+function mediaItemMarkup(entry, index, label) {
+  return `
+    <div class="media-item">
+      ${mediaPreviewMarkup(entry)}
+      <div class="media-actions">
+        ${mediaDownloadButton(entry, index)}
+        <a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(label || entry.url)}</a>
+      </div>
+    </div>
+  `;
+}
+
+function blobMediaType(entryType, contentType) {
+  const type = String(contentType || "").toLowerCase();
+  if (type.startsWith("image/")) return "image";
+  if (type.startsWith("audio/")) return "audio";
+  if (type.startsWith("video/")) return "video";
+  return entryType;
+}
+
+function createPreviewElement(type, src) {
+  const elementType = type === "audio" ? "audio" : type === "video" ? "video" : "img";
+  const element = document.createElement(elementType);
+  element.src = src;
+  element.className = "media-preview";
+  if (elementType === "img") {
+    element.alt = "Generated media preview";
+  } else {
+    element.controls = true;
+    if (elementType === "video") element.preload = "metadata";
+  }
+  return element;
+}
+
+async function hydrateMediaFrame(frame, signal) {
+  const url = frame.dataset.authMediaUrl;
+  if (!url) return;
+
+  try {
+    const response = await fetch(url, {
+      headers: playgroundHeaders(false),
+      signal
+    });
+    if (!response.ok) throw new Error(`Preview failed with status ${response.status}`);
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    if (signal.aborted) {
+      URL.revokeObjectURL(objectUrl);
+      return;
+    }
+
+    mediaObjectUrls.add(objectUrl);
+    const type = blobMediaType(frame.dataset.mediaType || "download", blob.type);
+    frame.replaceChildren(createPreviewElement(type, objectUrl));
+  } catch (error) {
+    if (signal.aborted) return;
+    frame.classList.add("is-error");
+    frame.textContent = `Preview unavailable. Use Download to fetch this ${previewLabel(frame.dataset.mediaType)}.`;
+  }
+}
+
+function hydrateAuthenticatedMedia(root) {
+  const frames = $$("[data-auth-media-url]", root);
+  if (!frames.length) return;
+  mediaPreviewController = new AbortController();
+  frames.forEach((frame) => hydrateMediaFrame(frame, mediaPreviewController.signal));
+}
+
 function renderMedia(json, category) {
   if (category === "image") {
     const items = Array.isArray(json.data) ? json.data : [];
@@ -668,25 +772,16 @@ function renderMedia(json, category) {
       .filter(Boolean);
     if (images.length) {
       const entries = uniqueMediaEntries(images.flatMap((url) => mediaUrlCandidates(url).map((candidate) => ({ type: "image", url: candidate }))));
-      return `<div class="media-output">${entries.map((entry, index) => `
-        <img alt="Generated image" src="${escapeHtml(entry.url)}">
-        <div class="media-actions">${mediaDownloadButton(entry, index)}</div>
-      `).join("")}</div>`;
+      return `<div class="media-output">${entries.map((entry, index) => mediaItemMarkup(entry, index, entry.url)).join("")}</div>`;
     }
   }
 
   const entries = uniqueMediaEntries(collectMediaEntries(json, category));
   if (!entries.length) return "";
   if (category === "music") {
-    return `<div class="media-output">${entries.map((entry, index) => entry.type === "image"
-      ? `<img alt="Generated music artwork" src="${escapeHtml(entry.url)}"><div class="media-actions">${mediaDownloadButton(entry, index)}</div>`
-      : `<audio controls src="${escapeHtml(entry.url)}"></audio><div class="media-actions">${mediaDownloadButton(entry, index)}<a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a></div>`
-    ).join("")}</div>`;
+    return `<div class="media-output">${entries.map((entry, index) => mediaItemMarkup(entry, index, entry.url)).join("")}</div>`;
   }
-  return `<div class="media-output">${entries.map((entry, index) => entry.type === "image"
-    ? `<img alt="Generated video image" src="${escapeHtml(entry.url)}"><div class="media-actions">${mediaDownloadButton(entry, index)}</div>`
-    : `<video controls preload="metadata" src="${escapeHtml(entry.url)}"></video><div class="media-actions">${mediaDownloadButton(entry, index)}<a href="${escapeHtml(entry.url)}" target="_blank" rel="noreferrer">${escapeHtml(entry.url)}</a></div>`
-  ).join("")}</div>`;
+  return `<div class="media-output">${entries.map((entry, index) => mediaItemMarkup(entry, index, entry.url)).join("")}</div>`;
 }
 
 async function downloadMedia(url, filename, button) {
