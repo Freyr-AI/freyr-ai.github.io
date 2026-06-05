@@ -4,11 +4,18 @@ Freyr Technology AI is an AI infrastructure and model API service company. The p
 
 Key pages:
 
-- Pricing: https://www.freyrtech.ai/
-- Privacy Policy: https://www.freyrtech.ai/privacy.html
-- Terms of Use: https://www.freyrtech.ai/terms.html
+- Pricing: https://www.token-exchange-ai.com/pricing.html
+- Privacy Policy: https://www.token-exchange-ai.com/privacy.html
+- Terms of Use: https://www.token-exchange-ai.com/terms.html
 
 Machine-readable resources:
 
-- Model catalog fallback: https://www.freyrtech.ai/assets/models.json
-- Sitemap: https://www.freyrtech.ai/sitemap.xml
+- Model category configuration: https://www.token-exchange-ai.com/config/model-categories.js
+- Model catalog fallback: https://www.token-exchange-ai.com/assets/models.json
+- Sitemap: https://www.token-exchange-ai.com/sitemap.xml
+
+Pricing notes:
+
+- Public model categories are text, image, music, and video.
+- Token pricing is shown for text models only when the API returns a positive token cost.
+- Zero or unavailable token prices are displayed as `Negotiable`.

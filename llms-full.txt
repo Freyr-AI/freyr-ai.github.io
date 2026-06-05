@@ -8,7 +8,16 @@ The site is a static, no-database website for visitors reviewing model pricing a
 
 ## Primary Content
 
-The home Pricing page presents text and image generation model prices loaded from Freyr's public model info API. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
+The home Pricing page presents text, image, music, and video model pricing loaded from Freyr's public model info API. Text model prices are normalized from token cost fields; image, music, and video pricing is currently shown as negotiable. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
+
+Current public pricing categories are configured in `/config/model-categories.js`:
+
+- Text: DeepSeek V4 Pro, DeepSeek V4 Flash, Qwen3.6 35B A3B FP8, and Nemotron 3 Nano Omni 30B Reasoning.
+- Image: FLUX.2 Dev.
+- Music: HeartMuLa OSS 3B Happy New Year.
+- Video: LTX 2.3, Wan2.2 T2V A14B, and MOVA 360p.
+
+Pricing display convention: positive text token costs are shown per 1M tokens. Zero, missing, or unavailable token costs are displayed as `Negotiable`.
 
 The Privacy Policy page describes personal data processing for Freyr AI services.
 

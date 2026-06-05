@@ -1,0 +1,37 @@
+# Freyr Model List Playground
+
+This hidden page is an internal model catalog and API smoke-test playground for `test.token-exchange-ai.com`.
+
+## Access
+
+- The page is intentionally `noindex`.
+- API origin defaults to `https://test.token-exchange-ai.com`.
+- Request headers are entered by the operator and stored only in browser local storage.
+- `/models` requires an `Authorization` header. Cloudflare Access headers may also be required.
+
+## Media Preview And Download
+
+Image, music, and video endpoints may return either inline `data:` URLs or remote output URLs.
+
+Remote media preview uses direct browser media loading:
+
+- Images render through `<img src>`.
+- Audio renders through `<audio src>`.
+- Video renders through `<video src>`.
+
+Generated file URLs under paths such as `/api/native/files/images/...` are configured for direct browser access. Preview and download links should use those returned URLs directly rather than adding `Authorization` or Cloudflare Access headers.
+
+The download button opens the returned media URL directly. If the browser cannot download inline media, the URL should still be usable in a new tab or through the browser's native save controls.
+
+## Pricing Page Convention
+
+The public pricing page keeps token pricing only for text models. Image, music, and video model pricing is currently displayed as `Negotiable` until commercial terms are finalized.
+
+Current public pricing categories are:
+
+- Text: DeepSeek V4 Pro, DeepSeek V4 Flash, Qwen3.6 35B A3B FP8, and Nemotron 3 Nano Omni 30B Reasoning.
+- Image: FLUX.2 Dev.
+- Music: HeartMuLa OSS 3B Happy New Year.
+- Video: LTX 2.3, Wan2.2 T2V A14B, and MOVA 360p.
+
+Zero, missing, or unavailable token costs are displayed as `Negotiable` instead of a zero-dollar token price.
