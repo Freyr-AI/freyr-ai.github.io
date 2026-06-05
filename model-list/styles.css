@@ -155,7 +155,8 @@ h3 {
   padding: 18px;
 }
 
-label {
+label,
+.form-label {
   color: #273345;
   font-size: 13px;
   font-weight: 820;
@@ -214,6 +215,14 @@ textarea:focus {
   border-color: var(--line-strong);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  color: #667085;
+  background: #e4e9f2;
+  border-color: #d2d9e6;
+  box-shadow: none;
+}
+
 .copy-link {
   margin-left: auto;
   border: 0;
@@ -235,6 +244,17 @@ textarea:focus {
   font-size: 12px;
   font-weight: 820;
   white-space: nowrap;
+}
+
+.fixed-domain {
+  min-height: 40px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: #273345;
+  background: #f8fafc;
+  font-weight: 760;
+  overflow-wrap: anywhere;
 }
 
 .badge.music {
@@ -308,11 +328,6 @@ textarea:focus {
   grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
-  transition: grid-template-columns 180ms ease;
-}
-
-.workspace.is-playground-open {
-  grid-template-columns: minmax(300px, 0.42fr) minmax(520px, 0.78fr);
 }
 
 .catalog {
@@ -373,10 +388,6 @@ textarea:focus {
   gap: 16px;
 }
 
-.workspace.is-playground-open .model-grid {
-  grid-template-columns: 1fr;
-}
-
 .model-card {
   display: grid;
   gap: 14px;
@@ -427,29 +438,107 @@ textarea:focus {
   gap: 8px;
 }
 
+.modal-open {
+  overflow: hidden;
+}
+
+.playground-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(7, 17, 31, 0.56);
+  backdrop-filter: blur(7px);
+}
+
 .playground {
-  position: sticky;
-  top: 18px;
+  position: fixed;
+  inset: 20px;
+  z-index: 50;
   display: none;
-  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 14px;
+  max-width: 1480px;
+  margin: 0 auto;
   padding: 18px;
+  overflow: hidden;
 }
 
 .workspace.is-playground-open .playground {
   display: grid;
-  justify-self: center;
-  width: min(100%, 760px);
 }
 
 .playground-head {
   justify-content: space-between;
   align-items: start;
+  gap: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .playground-head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.playground-body {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(420px, 1.2fr);
+  gap: 16px;
+  min-height: 0;
+}
+
+.response-panel,
+.request-panel {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.response-panel {
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.request-panel {
+  max-height: 100%;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.response-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.run-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  color: #36506d;
+  background: #eef3fa;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.run-status.busy {
+  color: #775005;
+  background: rgba(255, 187, 101, 0.3);
+}
+
+.run-status.complete {
+  color: #0d6849;
+  background: rgba(223, 246, 235, 0.84);
+}
+
+.run-status.error {
+  color: #9f1239;
+  background: #fff1f2;
 }
 
 .input {
@@ -510,10 +599,12 @@ textarea:focus {
 
 .result {
   min-height: 116px;
+  max-height: 100%;
   padding: 14px;
   color: #243146;
   background: linear-gradient(180deg, #ffffff 0%, #eef8ff 100%);
   box-shadow: none;
+  overflow: auto;
   overflow-wrap: anywhere;
 }
 
@@ -526,6 +617,20 @@ textarea:focus {
   color: #d9e8ff;
   background: #091221;
   white-space: pre-wrap;
+}
+
+.generation-state {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  gap: 8px;
+  color: var(--soft);
+  text-align: center;
+}
+
+.generation-state strong {
+  color: var(--ink);
+  font-size: 20px;
 }
 
 .media-output {
@@ -585,17 +690,23 @@ textarea:focus {
 }
 
 @media (max-width: 1120px) {
-  .hero,
-  .workspace {
-    grid-template-columns: 1fr;
-  }
-
-  .workspace.is-playground-open {
+  .hero {
     grid-template-columns: 1fr;
   }
 
   .playground {
-    position: static;
+    inset: 12px;
+  }
+
+  .playground-body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .response-panel,
+  .request-panel {
+    max-height: none;
+    overflow: visible;
   }
 
   .status-strip {
@@ -624,8 +735,18 @@ textarea:focus {
 
   .status-strip,
   .model-grid,
-  .param-grid {
+  .param-grid,
+  .playground-body {
     grid-template-columns: 1fr;
+  }
+
+  .playground {
+    inset: 8px;
+    padding: 14px;
+  }
+
+  .playground-head {
+    display: grid;
   }
 
   .status-strip > div {

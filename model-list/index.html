@@ -9,62 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css">
-    <style>
-      .workspace {
-        grid-template-columns: minmax(0, 1fr);
-      }
-
-      .playground {
-        display: none;
-      }
-
-      .workspace.is-playground-open {
-        grid-template-columns: minmax(300px, 0.42fr) minmax(520px, 0.78fr);
-      }
-
-      .workspace.is-playground-open .model-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .workspace.is-playground-open .playground {
-        display: grid;
-        justify-self: center;
-        width: min(100%, 760px);
-      }
-
-      .model-card.is-selected {
-        border-color: rgba(5, 93, 213, 0.42);
-        box-shadow: 0 20px 48px rgba(5, 93, 213, 0.12);
-      }
-
-      .media-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-
-      @media (max-width: 1120px) {
-        .workspace.is-playground-open {
-          grid-template-columns: 1fr;
-        }
-      }
-    </style>
-    <script defer src="app-reference-compress-20260605.js"></script>
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        endpointFor = function endpointFor(category) {
-          if (category === "image") return "/api/native/v1/images/generations";
-          if (category === "video") return "/api/native/v1/videos";
-          if (category === "music") return "/api/native/v1/music/generations";
-          return "/api/native/v1/chat/completions";
-        };
-
-        document.addEventListener("click", (event) => {
-          const opener = event.target.closest("[data-select-model]");
-          if (opener) document.querySelector(".workspace")?.classList.add("is-playground-open");
-        }, true);
-      }, { once: true });
-    </script>
+    <script defer src="app-playground-modal-20260605.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -86,8 +31,8 @@
             <p>Browse the production model API by modality, adjust request parameters, and test a selected model from one place.</p>
           </div>
           <form class="access-panel" id="accessForm">
-            <label for="apiOrigin">API domain</label>
-            <input id="apiOrigin" name="apiOrigin" type="url" value="https://test.token-exchange-ai.com" autocomplete="off">
+            <span class="form-label">API domain</span>
+            <div class="fixed-domain" id="apiOriginLabel">https://test.token-exchange-ai.com</div>
             <label for="authHeaders">Request headers</label>
             <textarea id="authHeaders" name="authHeaders" rows="4" spellcheck="false" placeholder="Authorization: Bearer <API_KEY>
 CF-Access-Client-Id: ...
@@ -144,6 +89,7 @@ CF-Access-Client-Secret: ..."></textarea>
             <div class="model-grid" id="modelGrid" aria-live="polite"></div>
           </div>
 
+          <div class="playground-backdrop" id="playgroundBackdrop" hidden></div>
           <aside class="playground" id="playground">
             <div class="playground-head">
               <div>
@@ -156,68 +102,78 @@ CF-Access-Client-Secret: ..."></textarea>
               </div>
             </div>
 
-            <label for="modelSelect">Model</label>
-            <select id="modelSelect" class="select wide"></select>
+            <div class="playground-body">
+              <section class="response-panel" aria-live="polite">
+                <div class="response-head">
+                  <strong>Response</strong>
+                  <span class="run-status" id="runStatus">Ready</span>
+                </div>
+                <div class="result" id="resultBox">Ready.</div>
+              </section>
 
-            <label for="promptInput" id="promptLabel">Prompt</label>
-            <textarea id="promptInput" class="input" rows="5"></textarea>
+              <section class="request-panel">
+                <label for="modelSelect">Model</label>
+                <select id="modelSelect" class="select wide"></select>
 
-            <div class="field-group" data-panel="text">
-              <label for="systemPrompt">System prompt</label>
-              <textarea id="systemPrompt" class="input" rows="3">You are a concise AI infrastructure assistant.</textarea>
-              <div class="param-grid">
-                <label>Max tokens <input id="maxTokens" type="number" min="1" max="8192" step="1" value="256"></label>
-                <label>Temperature <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.2"></label>
-                <label>Top p <input id="topP" type="number" min="0" max="1" step="0.05" value="0.9"></label>
-                <label class="checkbox"><input id="streamResponse" type="checkbox"> Stream</label>
+                <label for="promptInput" id="promptLabel">Prompt</label>
+                <textarea id="promptInput" class="input" rows="5"></textarea>
+
+                <div class="field-group" data-panel="text">
+                  <label for="systemPrompt">System prompt</label>
+                  <textarea id="systemPrompt" class="input" rows="3">You are a concise AI infrastructure assistant.</textarea>
+                  <div class="param-grid">
+                    <label>Max tokens <input id="maxTokens" type="number" min="1" max="8192" step="1" value="256"></label>
+                    <label>Temperature <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.2"></label>
+                    <label>Top p <input id="topP" type="number" min="0" max="1" step="0.05" value="0.9"></label>
+                    <label class="checkbox"><input id="streamResponse" type="checkbox"> Stream</label>
+                  </div>
+                </div>
+
+                <div class="field-group" data-panel="image" hidden>
+                  <div class="param-grid">
+                    <label>Size <select id="imageSize"><option>1024x1024</option><option>768x768</option><option>512x512</option><option>256x256</option></select></label>
+                    <label>Images <input id="imageCountInput" type="number" min="1" max="4" step="1" value="1"></label>
+                    <label>Steps <input id="imageSteps" type="number" min="1" max="50" step="1" value="1"></label>
+                    <label>Format <select id="imageFormat"><option value="url">url</option><option value="b64_json">b64_json</option></select></label>
+                  </div>
+                </div>
+
+                <div class="field-group" data-panel="video" hidden>
+                  <div class="param-grid">
+                    <label>Size <select id="videoSize"><option>512x512</option><option>640x360</option><option>768x512</option><option>1280x720</option></select></label>
+                    <label>FPS <input id="videoFps" type="number" min="1" max="30" step="1" value="8"></label>
+                    <label>Frames <input id="videoFrames" type="number" min="1" max="160" step="1" value="9"></label>
+                    <label>Steps <input id="videoSteps" type="number" min="1" max="50" step="1" value="1"></label>
+                  </div>
+                  <label for="referenceImage">Reference image</label>
+                  <input id="referenceImage" class="input" type="file" accept="image/*">
+                </div>
+
+                <div class="field-group" data-panel="music" hidden>
+                  <label for="musicTags">Music tags</label>
+                  <input id="musicTags" class="input" type="text" value="ambient, cinematic">
+                  <div class="param-grid">
+                    <label>Length ms <input id="musicLength" type="number" min="500" max="30000" step="500" value="1000"></label>
+                    <label>Temperature <input id="musicTemperature" type="number" min="0" max="2" step="0.1" value="0.8"></label>
+                    <label>Top k <input id="musicTopK" type="number" min="1" max="200" step="1" value="50"></label>
+                    <label>CFG scale <input id="musicCfg" type="number" min="0" max="20" step="0.5" value="4"></label>
+                  </div>
+                </div>
+
+                <div class="panel-actions">
+                  <button class="button primary" id="runPlayground" type="button">Run request</button>
+                  <button class="button secondary" id="resetPlayground" type="button">Reset</button>
+                </div>
+
+                <div class="request-preview">
+                  <div>
+                    <strong>Request preview</strong>
+                    <button class="copy-link" id="copyRequest" type="button">Copy</button>
+                  </div>
+                  <pre id="requestPreview"></pre>
+                </div>
               </div>
             </div>
-
-            <div class="field-group" data-panel="image" hidden>
-              <div class="param-grid">
-                <label>Size <select id="imageSize"><option>1024x1024</option><option>768x768</option><option>512x512</option><option>256x256</option></select></label>
-                <label>Images <input id="imageCountInput" type="number" min="1" max="4" step="1" value="1"></label>
-                <label>Steps <input id="imageSteps" type="number" min="1" max="50" step="1" value="1"></label>
-                <label>Format <select id="imageFormat"><option value="url">url</option><option value="b64_json">b64_json</option></select></label>
-              </div>
-            </div>
-
-            <div class="field-group" data-panel="video" hidden>
-              <div class="param-grid">
-                <label>Size <select id="videoSize"><option>512x512</option><option>640x360</option><option>768x512</option><option>1280x720</option></select></label>
-                <label>FPS <input id="videoFps" type="number" min="1" max="30" step="1" value="8"></label>
-                <label>Frames <input id="videoFrames" type="number" min="1" max="160" step="1" value="9"></label>
-                <label>Steps <input id="videoSteps" type="number" min="1" max="50" step="1" value="1"></label>
-              </div>
-              <label for="referenceImage">Reference image</label>
-              <input id="referenceImage" class="input" type="file" accept="image/*">
-            </div>
-
-            <div class="field-group" data-panel="music" hidden>
-              <label for="musicTags">Music tags</label>
-              <input id="musicTags" class="input" type="text" value="ambient, cinematic">
-              <div class="param-grid">
-                <label>Length ms <input id="musicLength" type="number" min="500" max="30000" step="500" value="1000"></label>
-                <label>Temperature <input id="musicTemperature" type="number" min="0" max="2" step="0.1" value="0.8"></label>
-                <label>Top k <input id="musicTopK" type="number" min="1" max="200" step="1" value="50"></label>
-                <label>CFG scale <input id="musicCfg" type="number" min="0" max="20" step="0.5" value="4"></label>
-              </div>
-            </div>
-
-            <div class="panel-actions">
-              <button class="button primary" id="runPlayground" type="button">Run request</button>
-              <button class="button secondary" id="resetPlayground" type="button">Reset</button>
-            </div>
-
-            <div class="request-preview">
-              <div>
-                <strong>Request preview</strong>
-                <button class="copy-link" id="copyRequest" type="button">Copy</button>
-              </div>
-              <pre id="requestPreview"></pre>
-            </div>
-
-            <div class="result" id="resultBox">Ready.</div>
           </aside>
         </section>
       </main>
