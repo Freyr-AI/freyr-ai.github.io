@@ -13,8 +13,8 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 
 - Opening a model launches a near-full-screen foreground playground window.
 - The foreground window has an `X` close button in the top-right corner.
-- The response panel is on the left side of the window.
-- Request controls, model parameters, and request preview are on the right side.
+- The left side of the window is ordered as prompt input, run controls, then response.
+- Model selection, model parameters, and request preview are on the right side.
 - While a request is running, the Run request button is disabled and the previous response is cleared.
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
 

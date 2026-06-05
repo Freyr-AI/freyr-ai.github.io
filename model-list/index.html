@@ -8,7 +8,7 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles-window-20260605.css">
+    <link rel="stylesheet" href="styles-left-prompt-20260605.css">
     <script defer src="app-playground-window-20260605.js"></script>
   </head>
   <body>
@@ -103,20 +103,27 @@ CF-Access-Client-Secret: ..."></textarea>
             </div>
 
             <div class="playground-body">
-              <section class="response-panel" aria-live="polite">
+              <section class="response-panel">
+                <div class="prompt-block">
+                  <label for="promptInput" id="promptLabel">Prompt</label>
+                  <textarea id="promptInput" class="input" rows="6"></textarea>
+                </div>
+
+                <div class="panel-actions playground-run-actions">
+                  <button class="button primary" id="runPlayground" type="button">Run request</button>
+                  <button class="button secondary" id="resetPlayground" type="button">Reset</button>
+                </div>
+
                 <div class="response-head">
                   <strong>Response</strong>
                   <span class="run-status" id="runStatus">Ready</span>
                 </div>
-                <div class="result" id="resultBox">Ready.</div>
+                <div class="result" id="resultBox" aria-live="polite">Ready.</div>
               </section>
 
               <section class="request-panel">
                 <label for="modelSelect">Model</label>
                 <select id="modelSelect" class="select wide"></select>
-
-                <label for="promptInput" id="promptLabel">Prompt</label>
-                <textarea id="promptInput" class="input" rows="5"></textarea>
 
                 <div class="field-group" data-panel="text">
                   <label for="systemPrompt">System prompt</label>
@@ -158,11 +165,6 @@ CF-Access-Client-Secret: ..."></textarea>
                     <label>Top k <input id="musicTopK" type="number" min="1" max="200" step="1" value="50"></label>
                     <label>CFG scale <input id="musicCfg" type="number" min="0" max="20" step="0.5" value="4"></label>
                   </div>
-                </div>
-
-                <div class="panel-actions">
-                  <button class="button primary" id="runPlayground" type="button">Run request</button>
-                  <button class="button secondary" id="resetPlayground" type="button">Reset</button>
                 </div>
 
                 <div class="request-preview">
