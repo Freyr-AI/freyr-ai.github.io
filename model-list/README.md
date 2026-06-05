@@ -17,6 +17,8 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - Model selection, model parameters, and request preview are on the right side.
 - While a request is running, the Run request button is disabled and the previous response is cleared.
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
+- Default prompts are scenario-oriented smoke-test prompts for each modality.
+- Image generation starts with `Images = 10` and `Steps = 10`.
 
 ## Media Preview And Download
 
@@ -33,6 +35,8 @@ Generated file URLs under paths such as `/api/native/files/images/...` are confi
 For generated image, audio, and video responses, the playground polls returned media URLs with native browser media loading before rendering the final response. This covers slower file-backed generation where the API may return a URL before the browser can load the file.
 
 The download button opens the returned media URL directly. If the browser cannot download inline media, the URL should still be usable in a new tab or through the browser's native save controls.
+
+Media outputs show only preview controls and download buttons. Raw media URLs are intentionally hidden from the result panel.
 
 ## Pricing Page Convention
 
