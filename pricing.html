@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Model Pricing | Freyr Technology AI</title>
-    <meta name="description" content="Freyr Technology AI model pricing page for text and image generation models.">
+    <meta name="description" content="Freyr Technology AI model pricing page for text, image, music, and video models.">
     <link rel="icon" type="image/png" href="assets/icon.png">
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="stylesheet" href="assets/styles.css?v=20260515-loading-state">
     <script src="config/model-categories.js"></script>
-    <script defer src="assets/app.js?v=20260527-prod-api"></script>
+    <script defer src="assets/app-pricing-negotiable-20260605.js"></script>
   </head>
   <body data-page="pricing">
     <div class="site-shell">
@@ -35,8 +35,8 @@
         <section class="page-hero">
           <div class="container">
             <span class="eyebrow">Model pricing</span>
-            <h1>Transparent pricing for text and image generation models</h1>
-            <p>Pricing is loaded directly from Freyr's native model info API and normalized in the browser for static access.</p>
+            <h1>Transparent pricing for text, image, music, and video models</h1>
+            <p>Text pricing is loaded directly from Freyr's native model info API. Media model pricing is marked negotiable while commercial terms are finalized.</p>
             <div class="api-status is-loading" data-api-status="pricing">Loading live pricing API...</div>
           </div>
         </section>
@@ -50,6 +50,8 @@
                 <button class="is-active" type="button" data-price-category="all">All</button>
                 <button type="button" data-price-category="text">Text</button>
                 <button type="button" data-price-category="image">Image</button>
+                <button type="button" data-price-category="music">Music</button>
+                <button type="button" data-price-category="video">Video</button>
               </div>
               <input id="pricingSearch" class="search" type="search" placeholder="Search by model or provider" aria-label="Search pricing">
               <select id="pricingSort" class="select" aria-label="Sort pricing">
@@ -75,7 +77,7 @@
                       <th>Category</th>
                       <th>Provider</th>
                       <th>Input</th>
-                      <th>Output / Image</th>
+                      <th>Output / Price</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -84,7 +86,7 @@
               </div>
             </div>
 
-            <div class="callout">Pricing is loaded directly from the public model info API and normalized from token cost fields.</div>
+            <div class="callout">Text pricing is loaded directly from the public model info API and normalized from token cost fields. Image, music, and video pricing is currently negotiable.</div>
           </div>
         </section>
       </main>
