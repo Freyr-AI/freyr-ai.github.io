@@ -19,6 +19,11 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
 - Image generation starts with `Images = 10` and `Steps = 10`.
+- Wan2.2 T2V A14B is text-to-video only, so the reference image upload control is hidden for that model.
+
+## Model Capability Source
+
+Model capability badges and feature hints are local frontend metadata in `MODEL_META` inside the active `model-list/app-playground-*.js` file. The live `/api/native/v1/model/info` response is used for model IDs and pricing fields, but it does not currently provide detailed capability metadata. Unknown models fall back to category inference from the model ID.
 
 ## Media Preview And Download
 

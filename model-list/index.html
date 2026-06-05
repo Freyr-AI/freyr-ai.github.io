@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles-output-clean-20260605.css">
-    <script defer src="app-playground-output-20260605.js"></script>
+    <script defer src="app-playground-reference-20260605.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -17,10 +17,6 @@
         <a class="brand" href="../pricing.html" aria-label="Freyr Technology AI pricing">
           <img src="https://www.freyrtech.ai/images/logo.png" alt="Freyr Technology AI">
         </a>
-        <div class="topbar-meta">
-          <span class="pill">Hidden URL</span>
-          <span>test.token-exchange-ai.com</span>
-        </div>
       </header>
 
       <main>
@@ -31,8 +27,6 @@
             <p>Browse the production model API by modality, adjust request parameters, and test a selected model from one place.</p>
           </div>
           <form class="access-panel" id="accessForm">
-            <span class="form-label">API domain</span>
-            <div class="fixed-domain" id="apiOriginLabel">https://test.token-exchange-ai.com</div>
             <label for="authHeaders">Request headers</label>
             <textarea id="authHeaders" name="authHeaders" rows="4" spellcheck="false" placeholder="Authorization: Bearer <API_KEY>
 CF-Access-Client-Id: ...
@@ -152,8 +146,10 @@ CF-Access-Client-Secret: ..."></textarea>
                     <label>Frames <input id="videoFrames" type="number" min="1" max="160" step="1" value="9"></label>
                     <label>Steps <input id="videoSteps" type="number" min="1" max="50" step="1" value="1"></label>
                   </div>
-                  <label for="referenceImage">Reference image</label>
-                  <input id="referenceImage" class="input" type="file" accept="image/*">
+                  <div class="reference-upload" data-reference-upload>
+                    <label for="referenceImage">Reference image</label>
+                    <input id="referenceImage" class="input" type="file" accept="image/*">
+                  </div>
                 </div>
 
                 <div class="field-group" data-panel="music" hidden>
