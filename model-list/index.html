@@ -49,13 +49,13 @@
         }
       }
     </style>
-    <script defer src="app-files-route-20260605.js"></script>
+    <script defer src="app-native-v1-routes-20260605.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", () => {
         endpointFor = function endpointFor(category) {
-          if (category === "image") return "/api/native/freyr/v1/images/generations";
-          if (category === "video") return "/api/native/freyr/v1/videos";
-          if (category === "music") return "/api/native/freyr/v1/music/generations";
+          if (category === "image") return "/api/native/v1/images/generations";
+          if (category === "video") return "/api/native/v1/videos";
+          if (category === "music") return "/api/native/v1/music/generations";
           return "/api/native/v1/chat/completions";
         };
 
