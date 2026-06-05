@@ -12,6 +12,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 ## Playground Layout
 
 - Opening a model launches a near-full-screen foreground playground window.
+- The foreground window has an `X` close button in the top-right corner.
 - The response panel is on the left side of the window.
 - Request controls, model parameters, and request preview are on the right side.
 - While a request is running, the Run request button is disabled and the previous response is cleared.

@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css">
-    <script defer src="app-playground-modal-20260605.js"></script>
+    <link rel="stylesheet" href="styles-window-20260605.css">
+    <script defer src="app-playground-window-20260605.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -91,6 +91,7 @@ CF-Access-Client-Secret: ..."></textarea>
 
           <div class="playground-backdrop" id="playgroundBackdrop" hidden></div>
           <aside class="playground" id="playground">
+            <button class="modal-close" id="closePlayground" type="button" aria-label="Close playground">X</button>
             <div class="playground-head">
               <div>
                 <span class="eyebrow">Playground</span>
@@ -98,7 +99,6 @@ CF-Access-Client-Secret: ..."></textarea>
               </div>
               <div class="playground-head-actions">
                 <span class="pill" id="playgroundCategory">Text</span>
-                <button class="copy-link" id="closePlayground" type="button">Close</button>
               </div>
             </div>
 
