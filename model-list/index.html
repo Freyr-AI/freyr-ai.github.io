@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles-output-clean-20260605.css">
-    <script defer src="app-playground-reference-20260605.js"></script>
+    <link rel="stylesheet" href="styles-preview-code-20260605.css">
+    <script defer src="app-playground-preview-code-20260605.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -164,8 +164,13 @@ CF-Access-Client-Secret: ..."></textarea>
                 </div>
 
                 <div class="request-preview">
-                  <div>
+                  <div class="request-preview-head">
                     <strong>Request preview</strong>
+                    <div class="preview-format-switch" role="group" aria-label="Request preview language">
+                      <button class="active" type="button" data-preview-format="curl">curl</button>
+                      <button type="button" data-preview-format="python">Python</button>
+                      <button type="button" data-preview-format="typescript">TypeScript</button>
+                    </div>
                     <button class="copy-link" id="copyRequest" type="button">Copy</button>
                   </div>
                   <pre id="requestPreview"></pre>

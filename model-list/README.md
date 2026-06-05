@@ -15,6 +15,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - The foreground window has an `X` close button in the top-right corner.
 - The left side of the window is ordered as prompt input, run controls, then response.
 - Model selection, model parameters, and request preview are on the right side.
+- Request preview can be switched between curl, Python, and TypeScript examples.
 - While a request is running, the Run request button is disabled and the previous response is cleared.
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
