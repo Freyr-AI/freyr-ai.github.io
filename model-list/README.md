@@ -23,6 +23,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - The response panel has a small icon button for copying only the rendered response output, excluding Usage, Cost, and Raw JSON helper sections.
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
 - Image generation starts with `Images = 10` and `Steps = 10`.
+- Image generation sends `n` for multi-image output and intentionally omits `response_format`, because the native image route rejects that parameter.
 - Wan2.2 T2V A14B is text-to-video only, so the reference image upload control is hidden for that model.
 - MOVA 360p uses `352x640` as its default playground size and shows queued job details while waiting for the output file URL to become readable.
 - Qwen3.5 exposes a Reasoning checkbox that maps to `chat_template_kwargs.enable_thinking` in the chat request body.
