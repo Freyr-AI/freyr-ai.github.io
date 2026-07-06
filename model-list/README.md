@@ -21,6 +21,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
 - Image generation starts with `Images = 10` and `Steps = 10`.
 - Wan2.2 T2V A14B is text-to-video only, so the reference image upload control is hidden for that model.
+- MOVA 360p uses `352x640` as its default playground size and shows queued job details while waiting for the output file URL to become readable.
 
 ## Model Capability Source
 
