@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles-preview-code-20260605.css">
-    <script defer src="app-reasoning-toggle-20260706.js"></script>
+    <link rel="stylesheet" href="styles-response-copy-20260706.css">
+    <script defer src="app-response-copy-20260706.js"></script>
   </head>
   <body>
     <div class="page-shell">
@@ -112,7 +112,15 @@ CF-Access-Client-Secret: ..."></textarea>
                   <strong>Response</strong>
                   <span class="run-status" id="runStatus">Ready</span>
                 </div>
-                <div class="result" id="resultBox" aria-live="polite">Ready.</div>
+                <div class="result-shell">
+                  <button class="copy-response-button" id="copyResponse" type="button" aria-label="Copy response" title="Copy response">
+                    <svg class="copy-response-icon" aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+                      <rect x="9" y="9" width="11" height="11" rx="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                  </button>
+                  <div class="result" id="resultBox" aria-live="polite">Ready.</div>
+                </div>
               </section>
 
               <section class="request-panel">
