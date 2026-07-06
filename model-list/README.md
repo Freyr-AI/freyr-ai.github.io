@@ -12,6 +12,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 ## Playground Layout
 
 - Opening a model launches a near-full-screen foreground playground window.
+- The page uses compact UI density so more catalog rows and playground controls fit on screen.
 - The foreground window has an `X` close button in the top-right corner.
 - The left side of the window is ordered as prompt input, run controls, then response.
 - Model selection, model parameters, and request preview are on the right side.
