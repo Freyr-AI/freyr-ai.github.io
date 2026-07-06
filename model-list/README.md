@@ -40,6 +40,7 @@ Remote media preview uses direct browser media loading:
 Generated file URLs under paths such as `/api/native/files/images/...` are configured for direct browser access. Preview and download links should use those returned URLs directly rather than adding `Authorization` or Cloudflare Access headers.
 
 For generated image, audio, and video responses, the playground polls returned media URLs with native browser media loading before rendering the final response. This covers slower file-backed generation where the API may return a URL before the browser can load the file.
+Media URL polling can wait up to two hours for slower queued video jobs.
 
 The download button opens the returned media URL directly. If the browser cannot download inline media, the URL should still be usable in a new tab or through the browser's native save controls.
 
