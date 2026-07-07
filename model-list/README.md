@@ -20,7 +20,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - Request preview can be switched between curl, Python, and TypeScript examples.
 - While a request is running, the Run request button is disabled and the previous response is cleared.
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
-- The response panel has a small icon button for copying only the rendered response output, excluding Usage, Cost, and Raw JSON helper sections.
+- The response panel has a small icon button for copying only the rendered response content, excluding the Response heading, Usage, Cost, and Raw JSON helper sections.
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
 - Image generation starts with `Images = 10` and `Steps = 10`.
 - Image generation sends `n` for multi-image output and intentionally omits `response_format`, because the native image route rejects that parameter.
