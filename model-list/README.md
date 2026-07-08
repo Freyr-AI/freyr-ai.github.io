@@ -26,7 +26,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - Image generation sends `n` for multi-image output and intentionally omits `response_format`, because the native image route rejects that parameter.
 - Wan2.2 T2V A14B is text-to-video only, so the reference image upload control is hidden for that model.
 - MOVA 360p uses `352x640` as its default playground size and shows queued job details while waiting for the output file URL to become readable.
-- DeepSeek V4 Pro and Qwen3.5 expose a Reasoning checkbox that maps to `chat_template_kwargs.enable_thinking` in the chat request body.
+- DeepSeek V4 Pro and Qwen3.5 expose a Reasoning checkbox. DeepSeek V4 Pro maps it to `chat_template_kwargs.thinking`, while Qwen3.5 maps it to `chat_template_kwargs.enable_thinking`; unsupported text models show the checkbox disabled.
 
 ## Model Capability Source
 
