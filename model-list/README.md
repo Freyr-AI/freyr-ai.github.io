@@ -21,6 +21,7 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 - While a request is running, the Run request button is disabled and the previous response is cleared.
 - The response panel shows `Generating...` until the API response and any generated media URL are ready.
 - The response panel has a small icon button for copying only the rendered response content, excluding the Response heading, Usage, Cost, and Raw JSON helper sections.
+- Text responses display returned `reasoning_content` in a separate Thinking block above the final Response. If reasoning is enabled but the API only returns reasoning token usage, the Thinking block shows that status instead.
 - Default prompts are scenario-oriented smoke-test prompts for each modality.
 - Image generation starts with `Images = 10` and `Steps = 10`.
 - Image generation sends `n` for multi-image output and intentionally omits `response_format`, because the native image route rejects that parameter.
