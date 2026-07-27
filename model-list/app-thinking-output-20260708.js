@@ -40,6 +40,13 @@ const MODEL_META = {
     capabilities: ["text-to-image", "creative generation"],
     sizes: "1024x1024 default"
   },
+  "Comfy-Org/Ideogram-4": {
+    category: "image",
+    displayName: "Ideogram 4",
+    description: "Text-to-image generation model for high-quality visual assets and typography-aware compositions.",
+    capabilities: ["text-to-image", "typography", "creative generation"],
+    sizes: "1024x1024 default"
+  },
   "Lightricks/LTX-2.3": {
     category: "video",
     displayName: "LTX 2.3",
@@ -64,6 +71,12 @@ const MODEL_META = {
     defaultVideoSize: "352x640",
     supportsReference: true,
     requiresReference: true
+  },
+  "jdopensource/JoyAI-Echo": {
+    category: "video",
+    displayName: "JoyEcho",
+    description: "Video generation model for short prompt-driven clips.",
+    capabilities: ["text-to-video", "video generation"]
   },
   "HeartMuLa/HeartMuLa-oss-3B-happy-new-year": {
     category: "music",
@@ -168,6 +181,17 @@ function inferCategory(id) {
   return "text";
 }
 
+function categoryFromPriceRow(priceRow = {}) {
+  const usageType = String(priceRow.usage_type || "").toLowerCase();
+  if (["text", "image", "video", "music"].includes(usageType)) return usageType;
+
+  const mode = String(priceRow.mode || "").toLowerCase();
+  if (mode === "image_generation") return "image";
+  if (mode === "video_generation") return "video";
+  if (mode === "music_generation" || mode === "audio_generation") return "music";
+  return "";
+}
+
 function endpointFor(category) {
   if (category === "image") return "/api/native/v1/images/generations";
   if (category === "video") return "/api/native/v1/videos";
@@ -197,7 +221,7 @@ function priceLabel(model) {
 
 function normalizeModel(id, priceRow = {}, source = "public model info") {
   const meta = MODEL_META[id] || {};
-  const category = meta.category || inferCategory(id);
+  const category = categoryFromPriceRow(priceRow) || meta.category || inferCategory(id);
   const endpoint = endpointFor(category);
   return {
     id,
