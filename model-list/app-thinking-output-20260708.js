@@ -45,7 +45,8 @@ const MODEL_META = {
     displayName: "Ideogram 4",
     description: "Text-to-image generation model for high-quality visual assets and typography-aware compositions.",
     capabilities: ["text-to-image", "typography", "creative generation"],
-    sizes: "1024x1024 default"
+    sizes: "1024x1024 default",
+    fixedImageSteps: 20
   },
   "Lightricks/LTX-2.3": {
     category: "video",
@@ -97,6 +98,7 @@ const state = {
   query: "",
   sort: "category",
   lastPromptCategory: "",
+  lastImageParamModel: "",
   lastVideoParamModel: "",
   playgroundOpen: false,
   running: false,
@@ -234,6 +236,7 @@ function normalizeModel(id, priceRow = {}, source = "public model info") {
     capabilities: meta.capabilities || [category],
     context: meta.context,
     sizes: meta.sizes,
+    fixedImageSteps: Number.isFinite(meta.fixedImageSteps) ? meta.fixedImageSteps : undefined,
     defaultVideoSize: meta.defaultVideoSize,
     audioLength: meta.audioLength,
     supportsReasoningToggle: Boolean(meta.supportsReasoningToggle),
@@ -502,6 +505,9 @@ function buildTextRequest(model) {
 }
 
 function buildImageRequest(model) {
+  const inferenceSteps = Number.isFinite(model.fixedImageSteps)
+    ? model.fixedImageSteps
+    : numberValue("#imageSteps", 10);
   return {
     kind: "json",
     url: endpointUrl(model),
@@ -511,8 +517,8 @@ function buildImageRequest(model) {
       model: model.id,
       prompt: textValue("#promptInput"),
       size: textValue("#imageSize", "1024x1024"),
-      n: numberValue("#imageCountInput", 10),
-      num_inference_steps: numberValue("#imageSteps", 10)
+      n: numberValue("#imageCountInput", 2),
+      num_inference_steps: inferenceSteps
     }
   };
 }
@@ -753,6 +759,16 @@ function updatePlayground() {
   if (prompt && state.lastPromptCategory !== model.category) {
     prompt.value = defaultPrompt(model.category);
     state.lastPromptCategory = model.category;
+  }
+
+  const imageSteps = $("#imageSteps");
+  if (imageSteps) {
+    const hasFixedImageSteps = model.category === "image" && Number.isFinite(model.fixedImageSteps);
+    imageSteps.disabled = hasFixedImageSteps;
+    if (model.category === "image" && state.lastImageParamModel !== model.id) {
+      imageSteps.value = String(hasFixedImageSteps ? model.fixedImageSteps : 10);
+      state.lastImageParamModel = model.id;
+    }
   }
 
   if (model.category === "video" && state.lastVideoParamModel !== model.id) {
@@ -1433,6 +1449,7 @@ async function runPlayground() {
 
 function resetPlayground() {
   state.lastPromptCategory = "";
+  state.lastImageParamModel = "";
   state.lastVideoParamModel = "";
   $("#systemPrompt").value = "You are a concise AI infrastructure assistant.";
   $("#maxTokens").value = "256";
@@ -1441,7 +1458,7 @@ function resetPlayground() {
   $("#streamResponse").checked = false;
   $("#reasoningMode").checked = false;
   $("#imageSize").value = "1024x1024";
-  $("#imageCountInput").value = "10";
+  $("#imageCountInput").value = "2";
   $("#imageSteps").value = "10";
   $("#videoSize").value = "512x512";
   $("#videoFps").value = "8";
