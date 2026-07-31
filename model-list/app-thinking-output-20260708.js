@@ -24,6 +24,13 @@ const MODEL_META = {
     capabilities: ["chat", "fast", "cost efficient"],
     context: "Long context"
   },
+  "moonshotai/Kimi-K3": {
+    category: "text",
+    displayName: "Kimi K3",
+    description: "Moonshot chat and reasoning model for long-form analysis, assistants, and tool-driven workflows.",
+    capabilities: ["chat", "reasoning", "long context"],
+    context: "Provider defined"
+  },
   "Qwen/Qwen3.5-35B-A3B-FP8": {
     category: "text",
     displayName: "Qwen3.5 35B A3B FP8",
@@ -47,6 +54,13 @@ const MODEL_META = {
     capabilities: ["text-to-image", "typography", "creative generation"],
     sizes: "1024x1024 default",
     fixedImageSteps: 20
+  },
+  "baidu/ERNIE-Image-Turbo": {
+    category: "image",
+    displayName: "ERNIE Image Turbo",
+    description: "Fast text-to-image generation model for production visual content and rapid iteration.",
+    capabilities: ["text-to-image", "fast generation", "creative generation"],
+    sizes: "Provider defined"
   },
   "Lightricks/LTX-2.3": {
     category: "video",
@@ -88,7 +102,17 @@ const MODEL_META = {
   }
 };
 
-const FALLBACK_IDS = Object.keys(MODEL_META);
+// Keep metadata for retired models above so old links render useful labels,
+// but never advertise an offline upstream in the fallback catalog.
+const FALLBACK_IDS = [
+  "deepseek-ai/DeepSeek-V4-Pro",
+  "deepseek-ai/DeepSeek-V4-Flash",
+  "moonshotai/Kimi-K3",
+  "Comfy-Org/Ideogram-4",
+  "baidu/ERNIE-Image-Turbo",
+  "OpenMOSS-Team/MOVA-360p",
+  "jdopensource/JoyAI-Echo"
+];
 
 const state = {
   headerText: localStorage.getItem(HEADERS_STORAGE_KEY) || "",
@@ -267,7 +291,15 @@ async function fetchJson(url, options = {}) {
 }
 
 async function fetchPublicModelInfo() {
-  const data = await fetchJson(`${apiBase()}/model/info`, { cache: "no-store" });
+  // The pricing route accepts the LiteLLM Authorization header. Cloudflare
+  // Access headers remain on the authorized /models request below.
+  const configuredHeaders = parseHeaderLines(state.headerText);
+  const authorizationEntry = Object.entries(configuredHeaders)
+    .find(([name]) => name.toLowerCase() === "authorization");
+  const headers = authorizationEntry
+    ? { Authorization: authorizationEntry[1] }
+    : {};
+  const data = await fetchJson(`${apiBase()}/model/info`, { headers, cache: "no-store" });
   return Array.isArray(data.data) ? data.data : [];
 }
 
@@ -287,27 +319,22 @@ function setStatus(message, type = "") {
 
 async function loadModels({ authorized = false } = {}) {
   setStatus(authorized ? "Loading authorized /models and public pricing..." : "Loading public model info...");
-  let modelRows = [];
-  let status = "Loaded public model info from production.";
+  const pricePromise = fetchPublicModelInfo();
+  const modelPromise = authorized
+    ? fetchAuthorizedModels()
+    : Promise.reject(new Error("Authorization header is required for /models."));
+  const [priceResult, modelResult] = await Promise.allSettled([pricePromise, modelPromise]);
+  const priceRows = priceResult.status === "fulfilled" ? priceResult.value : [];
+  const authorizedRows = modelResult.status === "fulfilled" ? modelResult.value : [];
+  const modelRows = authorizedRows.length
+    ? authorizedRows
+    : priceRows.map((row) => ({ id: row.model_name || row.id || row.name }));
 
-  try {
-    const priceRows = await fetchPublicModelInfo();
-    modelRows = priceRows.map((row) => ({ id: row.model_name || row.id || row.name }));
-    let source = "public model info";
-
-    if (authorized) {
-      try {
-        const authorizedRows = await fetchAuthorizedModels();
-        if (authorizedRows.length) {
-          modelRows = authorizedRows;
-          source = "authorized /models";
-          status = `Loaded ${authorizedRows.length} authorized models from /models.`;
-        }
-      } catch (error) {
-        status = `Loaded public model info. Authorized /models request failed: ${error instanceof Error ? error.message : String(error)}`;
-      }
-    }
-
+  if (modelRows.length) {
+    const source = authorizedRows.length ? "authorized /models" : "model info";
+    const status = authorizedRows.length
+      ? `Loaded ${authorizedRows.length} authorized models from /models.${priceRows.length ? "" : " Pricing metadata unavailable."}`
+      : `Loaded ${modelRows.length} models from model info.`;
     const priceMap = rowsByModelName(priceRows);
     const seen = new Set();
     state.models = modelRows
@@ -320,10 +347,13 @@ async function loadModels({ authorized = false } = {}) {
       })
       .map((id) => normalizeModel(id, priceMap.get(id), source));
 
-    setStatus(status, source === "authorized /models" ? "live" : authorized ? "error" : "live");
-  } catch (error) {
+    setStatus(status, "live");
+  } else {
+    const errors = [priceResult, modelResult]
+      .filter((result) => result.status === "rejected")
+      .map((result) => result.reason instanceof Error ? result.reason.message : String(result.reason));
     state.models = FALLBACK_IDS.map((id) => normalizeModel(id, {}, "local fallback"));
-    setStatus(`Live API unavailable. Showing fallback catalog. ${error instanceof Error ? error.message : ""}`, "error");
+    setStatus(`Live API unavailable. Showing current fallback catalog. ${errors.join(" ")}`, "error");
   }
 
   if (!state.selectedId || !state.models.some((model) => model.id === state.selectedId)) {

@@ -31,7 +31,9 @@ This hidden page is an internal model catalog and API smoke-test playground for 
 
 ## Model Capability Source
 
-Model capability badges and feature hints are local frontend metadata in `MODEL_META` inside the active `model-list/app-playground-*.js` file. The live `/api/native/v1/model/info` response is used for model IDs and pricing fields, but it does not currently provide detailed capability metadata. Unknown models fall back to category inference from the model ID.
+Model capability badges and feature hints are local frontend metadata in `MODEL_META` inside the active `model-list/app-playground-*.js` file. The authorized `/api/native/v1/models` response is the source of truth for model IDs. `/api/native/v1/model/info` is fetched independently for pricing and category fields; a pricing failure must not prevent the authorized live catalog from rendering. Unknown models fall back to category inference from the model ID.
+
+The pricing request sends only the LiteLLM `Authorization` header. The authorized model-list request sends all operator-provided headers, including Cloudflare Access headers when configured. The local fallback contains only currently reachable production models; metadata for retired models may remain for old deep links, but offline upstreams must not be advertised by the fallback list.
 
 ## Media Preview And Download
 
