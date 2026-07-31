@@ -84,6 +84,7 @@ const MODEL_META = {
     capabilities: ["image-to-video", "reference image", "360p"],
     sizes: "352x640 smoke-test default",
     defaultVideoSize: "352x640",
+    outputSlug: "mova",
     supportsReference: true,
     requiresReference: true
   },
@@ -91,7 +92,8 @@ const MODEL_META = {
     category: "video",
     displayName: "JoyEcho",
     description: "Video generation model for short prompt-driven clips.",
-    capabilities: ["text-to-video", "video generation"]
+    capabilities: ["text-to-video", "video generation"],
+    outputSlug: "joyecho"
   },
   "HeartMuLa/HeartMuLa-oss-3B-happy-new-year": {
     category: "music",
@@ -262,6 +264,7 @@ function normalizeModel(id, priceRow = {}, source = "public model info") {
     sizes: meta.sizes,
     fixedImageSteps: Number.isFinite(meta.fixedImageSteps) ? meta.fixedImageSteps : undefined,
     defaultVideoSize: meta.defaultVideoSize,
+    outputSlug: meta.outputSlug,
     audioLength: meta.audioLength,
     supportsReasoningToggle: Boolean(meta.supportsReasoningToggle),
     reasoningTemplateKey: meta.reasoningTemplateKey || "enable_thinking",
@@ -1320,18 +1323,79 @@ async function waitForMediaEntry(entry, index, total, statusDetail = "") {
   throw new Error(`Timed out waiting for generated ${previewLabel(entry.type)} URL: ${entry.url}`);
 }
 
-async function waitForMediaOutputs(json, category) {
-  if (category === "text") return;
-  const entries = mediaEntriesForJson(json, category);
-  const statusDetail = mediaGenerationStatusDetail(json, entries);
+function rawVideoJobId(value) {
+  const text = String(value || "");
+  if (!text.startsWith("video_")) return "";
+  try {
+    let encoded = text.slice("video_".length).replaceAll("-", "+").replaceAll("_", "/");
+    encoded += "=".repeat((4 - (encoded.length % 4)) % 4);
+    const decoded = window.atob(encoded);
+    return decoded.match(/(?:^|;)video_id:([^;]+)/)?.[1] || "";
+  } catch {
+    return "";
+  }
+}
+
+function withDerivedVideoOutput(json, model) {
+  if (mediaEntriesForJson(json, "video").length || !model?.outputSlug) return json;
+  const videoId = rawVideoJobId(json?.id);
+  if (!videoId) return json;
+  return {
+    ...json,
+    freyr_output: {
+      media_type: "video",
+      urls: [`/files/videos/${model.outputSlug}/${videoId}.mp4`]
+    }
+  };
+}
+
+async function waitForVideoJob(json, model) {
+  let current = json;
+  const initialStatus = String(current?.status || "");
+  if (!current?.id || /complete|completed|succeeded|success/i.test(initialStatus)) {
+    return withDerivedVideoOutput(current, model);
+  }
+  if (/failed|cancelled|canceled/i.test(initialStatus)) {
+    throw new Error(`Video generation ${initialStatus}: ${JSON.stringify(current.error || current)}`);
+  }
+
+  const startedAt = Date.now();
+  let attempt = 1;
+  while (Date.now() - startedAt < MEDIA_POLL_TIMEOUT_MS) {
+    setRunStatus(`Generating... checking video job (${attempt})`, "busy");
+    setResult(generationMessage(mediaGenerationStatusDetail(current, [])));
+    await delay(MEDIA_POLL_INTERVAL_MS);
+    current = await fetchJson(`${endpointUrl(model)}/${encodeURIComponent(current.id)}`, {
+      headers: playgroundHeaders(false),
+      cache: "no-store"
+    });
+    const status = String(current?.status || "");
+    if (/failed|cancelled|canceled/i.test(status)) {
+      throw new Error(`Video generation ${status}: ${JSON.stringify(current.error || current)}`);
+    }
+    if (/complete|completed|succeeded|success/i.test(status)) {
+      return withDerivedVideoOutput(current, model);
+    }
+    attempt += 1;
+  }
+  throw new Error(`Timed out waiting for video job: ${current?.id || json.id}`);
+}
+
+async function waitForMediaOutputs(json, model) {
+  const category = model.category;
+  if (category === "text") return json;
+  const finalJson = category === "video" ? await waitForVideoJob(json, model) : json;
+  const entries = mediaEntriesForJson(finalJson, category);
+  const statusDetail = mediaGenerationStatusDetail(finalJson, entries);
   if (!entries.length) {
     if (statusDetail) setResult(generationMessage(statusDetail));
-    return;
+    return finalJson;
   }
 
   for (let index = 0; index < entries.length; index += 1) {
     await waitForMediaEntry(entries[index], index, entries.length, statusDetail);
   }
+  return finalJson;
 }
 
 function downloadMedia(url, filename, button) {
@@ -1452,8 +1516,8 @@ async function runPlayground() {
       return;
     }
 
-    const json = await response.json();
-    await waitForMediaOutputs(json, model.category);
+    let json = await response.json();
+    json = await waitForMediaOutputs(json, model);
     const reasoning = readReasoningContent(json);
     const content = readFinalContent(json);
     const thinkingRequested = model.category === "text" && model.supportsReasoningToggle && Boolean($("#reasoningMode")?.checked);
