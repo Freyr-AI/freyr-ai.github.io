@@ -236,7 +236,7 @@ button {
   z-index: -2;
   background:
     linear-gradient(90deg, rgba(7, 17, 31, 0.94) 0%, rgba(7, 17, 31, 0.78) 46%, rgba(7, 17, 31, 0.38) 100%),
-    url("https://www.freyrtech.ai/images/banner1.png") center / cover no-repeat;
+    url("../model-list/tech-hero-bg-20260706.jpg") center / cover no-repeat;
 }
 
 .hero::after {
@@ -1105,7 +1105,7 @@ tr:last-child td {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(0, 12, 96, 0.98), rgba(5, 93, 213, 0.86)),
-    url("https://www.freyrtech.ai/images/banner3.png") center / cover no-repeat;
+    url("../model-list/tech-hero-bg-20260706.jpg") center / cover no-repeat;
 }
 
 .cta-band h2 {
@@ -1123,7 +1123,7 @@ tr:last-child td {
   color: var(--white);
   background:
     linear-gradient(90deg, rgba(7, 17, 31, 0.94), rgba(0, 12, 96, 0.78)),
-    url("https://www.freyrtech.ai/images/banner2.png") center / cover no-repeat;
+    url("../model-list/tech-hero-bg-20260706.jpg") center / cover no-repeat;
 }
 
 .page-hero p {
@@ -1138,7 +1138,7 @@ body[data-page="terms"] .page-hero {
   padding: 76px 0 48px;
   background:
     linear-gradient(90deg, rgba(7, 17, 31, 0.9), rgba(0, 12, 96, 0.72)),
-    url("https://www.freyrtech.ai/images/banner2.png") center / cover no-repeat;
+    url("../model-list/tech-hero-bg-20260706.jpg") center / cover no-repeat;
 }
 
 body[data-page="privacy"] .page-hero .eyebrow,
@@ -1444,7 +1444,7 @@ body[data-page="terms"] .page-hero + .section {
   border-radius: 8px;
   background:
     linear-gradient(135deg, rgba(0, 12, 96, 0.85), rgba(5, 93, 213, 0.62)),
-    url("https://www.freyrtech.ai/images/locations.png") center / cover no-repeat;
+    url("../model-list/tech-hero-bg-20260706.jpg") center / cover no-repeat;
   color: var(--white);
 }
 
