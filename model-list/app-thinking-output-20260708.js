@@ -206,6 +206,7 @@ function providerFromId(id) {
 function stripDeploymentSuffix(value) {
   return String(value || "")
     .replace(/[\s_-]*(?:GB200|B200|H200|H100|A100|A800|H800)[\s_-]*\d{1,4}$/i, "")
+    .replace(/[\s_-]*SH\d{1,4}$/i, "")
     .trim();
 }
 
@@ -216,7 +217,8 @@ function prettyModelTitle(value) {
 
 function titleFromId(id) {
   const value = String(id || "");
-  const title = value.includes("/") ? value.split("/").slice(1).join("/") : value;
+  const parts = value.split("/").filter(Boolean);
+  const title = parts.length ? parts[parts.length - 1] : value;
   return prettyModelTitle(title);
 }
 
