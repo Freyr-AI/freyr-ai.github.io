@@ -7,6 +7,13 @@ const CATEGORY_LABELS = {
   video: "Video"
 };
 
+const DISPLAY_NAME_ALIASES = {
+  "kimi-k3": "Kimi K3",
+  kimik3: "Kimi K3",
+  "minimax-h3": "MiniMax H3",
+  minimaxh3: "MiniMax H3"
+};
+
 const MODEL_FALLBACK = [
   {
     id: "deepseek-ai/DeepSeek-R1",
@@ -306,11 +313,25 @@ function setPlaygroundHeaders(value) {
 }
 
 function providerFromModel(modelName) {
-  return modelName.includes("/") ? modelName.split("/")[0] : "Freyr";
+  const value = String(modelName || "");
+  return value.includes("/") ? value.split("/")[0] : "Freyr";
+}
+
+function stripDeploymentSuffix(value) {
+  return String(value || "")
+    .replace(/[\s_-]*(?:GB200|B200|H200|H100|A100|A800|H800)[\s_-]*\d{1,4}$/i, "")
+    .trim();
+}
+
+function prettyModelTitle(value) {
+  const title = stripDeploymentSuffix(value);
+  return DISPLAY_NAME_ALIASES[title.toLowerCase()] || title;
 }
 
 function titleFromModel(modelName) {
-  return modelName.includes("/") ? modelName.split("/").slice(1).join("/") : modelName;
+  const value = String(modelName || "");
+  const title = value.includes("/") ? value.split("/").slice(1).join("/") : value;
+  return prettyModelTitle(title);
 }
 
 function pricePerMillion(value) {
@@ -1058,7 +1079,7 @@ function renderPricing() {
       const isText = item.category === "text";
       return `
         <tr>
-          <td><strong>${item.displayName}</strong><br><span>${item.modelId}</span></td>
+          <td><strong>${item.displayName}</strong></td>
           <td><span class="badge ${isText ? "" : "badge-cyan"}">${label(categoryLabel(item.category))}</span></td>
           <td>${item.provider}</td>
           <td>${isText ? tokenPriceLabel(item.inputPerMillionTokens) : label(NEGOTIABLE_PRICE_LABEL)}</td>

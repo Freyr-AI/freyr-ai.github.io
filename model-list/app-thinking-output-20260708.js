@@ -7,6 +7,13 @@ const MEDIA_POLL_INTERVAL_MS = 3000;
 const MEDIA_POLL_PROBE_TIMEOUT_MS = 9000;
 const MEDIA_POLL_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
+const DISPLAY_NAME_ALIASES = {
+  "kimi-k3": "Kimi K3",
+  kimik3: "Kimi K3",
+  "minimax-h3": "MiniMax H3",
+  minimaxh3: "MiniMax H3"
+};
+
 const MODEL_META = {
   "deepseek-ai/DeepSeek-V4-Pro": {
     category: "text",
@@ -192,11 +199,25 @@ function redactedHeaders(includeJson = true) {
 }
 
 function providerFromId(id) {
-  return id.includes("/") ? id.split("/")[0] : "Freyr";
+  const value = String(id || "");
+  return value.includes("/") ? value.split("/")[0] : "Freyr";
+}
+
+function stripDeploymentSuffix(value) {
+  return String(value || "")
+    .replace(/[\s_-]*(?:GB200|B200|H200|H100|A100|A800|H800)[\s_-]*\d{1,4}$/i, "")
+    .trim();
+}
+
+function prettyModelTitle(value) {
+  const title = stripDeploymentSuffix(value);
+  return DISPLAY_NAME_ALIASES[title.toLowerCase()] || title;
 }
 
 function titleFromId(id) {
-  return id.includes("/") ? id.split("/").slice(1).join("/") : id;
+  const value = String(id || "");
+  const title = value.includes("/") ? value.split("/").slice(1).join("/") : value;
+  return prettyModelTitle(title);
 }
 
 function inferCategory(id) {
@@ -418,7 +439,6 @@ function renderModels() {
         <div class="capabilities">${model.capabilities.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
         <div class="endpoint"><strong>Endpoint</strong> ${escapeHtml(model.endpoint)}</div>
         <div class="price"><strong>Pricing</strong> ${escapeHtml(priceLabel(model))}</div>
-        <div class="model-id">${escapeHtml(model.id)}</div>
         <div class="card-actions">
           <button class="button primary" type="button" data-select-model="${escapeHtml(model.id)}">${state.playgroundOpen && model.id === state.selectedId ? "Playground open" : "Open playground"}</button>
         </div>
