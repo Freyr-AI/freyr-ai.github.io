@@ -169,6 +169,39 @@ async function fetchJson(url, options = {}) {
   return body;
 }
 
+async function fetchEventStreamResult(url, options = {}) {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const body = await parseResponseBody(response);
+    throw new ApiError(response.status, body, response.headers.get("Retry-After") || "");
+  }
+  if (!response.body) throw new Error("浏览器无法读取 IR 事件流。");
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+    const frames = buffer.replaceAll("\r\n", "\n").split("\n\n");
+    buffer = frames.pop() || "";
+    for (const frame of frames) {
+      const lines = frame.split("\n");
+      const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
+      if (event !== "result") continue;
+      const data = lines
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart())
+        .join("\n");
+      const result = JSON.parse(data);
+      if (Number(result.status) >= 400) throw new ApiError(Number(result.status), result.body);
+      return result.body;
+    }
+    if (done) break;
+  }
+  throw new Error("IR 事件流在返回结果前已结束。");
+}
+
 function showFormMessage(message = "") {
   const node = $("#formMessage");
   node.textContent = message;
@@ -465,9 +498,9 @@ async function prepareIr() {
       ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
     };
     const briefBody = JSON.stringify(briefPayload);
-    state.brief = await fetchJson(`${API_V1_ROOT}/h3-ir/briefs`, {
+    state.brief = await fetchEventStreamResult(`${API_V1_ROOT}/h3-ir/briefs`, {
       method: "POST",
-      headers: authHeaders({ json: true }),
+      headers: { ...authHeaders({ json: true }), Accept: "text/event-stream" },
       body: briefBody,
       signal: state.abortController.signal
     });
