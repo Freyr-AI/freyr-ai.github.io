@@ -115,9 +115,20 @@ function randomUuid() {
 function friendlyError(error) {
   if (error?.name === "AbortError") return "请求已停止。";
   if (error instanceof ApiError) {
-    const detail = typeof error.detail === "string"
-      ? error.detail
-      : error.detail?.detail || error.detail?.error?.message || error.detail?.message;
+    const nestedDetail = error.detail?.detail ?? error.detail?.error ?? error.detail;
+    let detail = nestedDetail;
+    if (nestedDetail && typeof nestedDetail === "object") {
+      const code = typeof nestedDetail.code === "string" ? nestedDetail.code : "";
+      const message = typeof nestedDetail.message === "string" ? nestedDetail.message : "";
+      detail = [code, message].filter(Boolean).join(" · ");
+      if (!detail) {
+        try {
+          detail = JSON.stringify(nestedDetail);
+        } catch {
+          detail = String(nestedDetail);
+        }
+      }
+    }
     return scrubSensitiveText([`HTTP ${error.status}`, detail].filter(Boolean).join(" · "));
   }
   return scrubSensitiveText(error instanceof Error ? error.message : String(error || "未知错误"));
@@ -424,7 +435,7 @@ async function prepareIr() {
   state.preparedSettings = {
     model: $("#modelSelect").value,
     seconds: Number($("#secondsInput").value),
-    ratio: $("#ratioInput").value,
+    ratio: $("#ratioInput").value || "16:9",
     quality: state.desiredQuality,
     seed: seedValue ? Number(seedValue) : null
   };
@@ -446,8 +457,7 @@ async function prepareIr() {
       intent: $("#intentInput").value.trim(),
       assets: state.preparedAssets.map((asset) => ({
         sha256: asset.sha256,
-        kind: asset.type,
-        role: "reference"
+        kind: asset.type
       })),
       seconds: state.preparedSettings.seconds,
       aspect: state.preparedSettings.ratio,
