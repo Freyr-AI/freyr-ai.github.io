@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20260914-ref2va">
-    <script defer src="app.js?v=20260914-ref2va"></script>
+    <link rel="stylesheet" href="styles.css?v=20260914-auto-save-headers">
+    <script defer src="app.js?v=20260914-auto-save-headers"></script>
   </head>
   <body>
     <header class="topbar">
@@ -30,11 +30,11 @@
       <form id="accessForm">
         <div>
           <label for="authHeaders">Request headers</label>
-          <p>与 Model List 共用浏览器本地配置，不会写入页面源码。</p>
+          <p>默认留空；输入后自动保存到当前浏览器，不会写入页面源码。</p>
         </div>
         <textarea id="authHeaders" name="authHeaders" rows="4" spellcheck="false" placeholder="Authorization: Bearer &lt;API_KEY&gt;&#10;CF-Access-Client-Id: ...&#10;CF-Access-Client-Secret: ..."></textarea>
         <div class="auth-actions">
-          <button class="button primary" type="submit">保存 headers</button>
+          <span class="auth-save-status" id="authSaveStatus" role="status">等待输入</span>
           <button class="button ghost" id="clearHeaders" type="button">清除</button>
         </div>
       </form>

@@ -94,6 +94,7 @@ function updateAuthState() {
   const ready = authIsComplete();
   $("#authDot").classList.toggle("ready", ready);
   $("#authToggle").title = ready ? "Request headers 已配置" : "需要配置 Request headers";
+  $("#authSaveStatus").textContent = state.headerText.trim() ? "已自动保存" : "等待输入";
 }
 
 function formatBytes(bytes) {
@@ -681,12 +682,15 @@ function bindEvents() {
     $("#authPanel").hidden = nextHidden;
     $("#authToggle").setAttribute("aria-expanded", String(!nextHidden));
   });
-  $("#accessForm").addEventListener("submit", (event) => {
-    event.preventDefault();
+  $("#accessForm").addEventListener("submit", (event) => event.preventDefault());
+  $("#authHeaders").addEventListener("input", () => {
     state.headerText = $("#authHeaders").value;
-    localStorage.setItem(HEADERS_STORAGE_KEY, state.headerText);
+    if (state.headerText) {
+      localStorage.setItem(HEADERS_STORAGE_KEY, state.headerText);
+    } else {
+      localStorage.removeItem(HEADERS_STORAGE_KEY);
+    }
     updateAuthState();
-    showFormMessage(authIsComplete() ? "" : "需要填写 Authorization 和两项 Cloudflare Access headers。 ");
   });
   $("#clearHeaders").addEventListener("click", () => {
     state.headerText = "";

@@ -96,6 +96,7 @@ button:disabled { cursor: not-allowed; }
 .auth-panel p { margin: 0; color: var(--muted); font-size: 12px; }
 .auth-panel textarea { min-height: 82px; resize: vertical; }
 .auth-actions { display: flex; gap: 8px; }
+.auth-save-status { display: inline-flex; align-items: center; min-height: 38px; padding: 0 10px; border-radius: 9px; color: var(--success); background: rgba(23, 136, 98, 0.08); font-size: 11px; font-weight: 780; }
 
 textarea, input, select {
   width: 100%;
