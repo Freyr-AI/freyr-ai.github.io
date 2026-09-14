@@ -500,7 +500,11 @@ async function prepareIr() {
     const briefBody = JSON.stringify(briefPayload);
     state.brief = await fetchEventStreamResult(`${API_V1_ROOT}/h3-ir/briefs`, {
       method: "POST",
-      headers: { ...authHeaders({ json: true }), Accept: "text/event-stream" },
+      headers: {
+        ...authHeaders({ json: true }),
+        Accept: "text/event-stream",
+        "X-Pass-Accept": "text/event-stream"
+      },
       body: briefBody,
       signal: state.abortController.signal
     });
