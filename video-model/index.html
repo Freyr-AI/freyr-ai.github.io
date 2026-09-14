@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Video Model | Freyr Technology AI</title>
+    <meta name="description" content="FreyrAI MiniMax H3 reference-to-video workspace.">
+    <meta name="robots" content="noindex">
+    <link rel="icon" type="image/png" href="../assets/icon.png">
+    <link rel="apple-touch-icon" href="../assets/icon.png">
+    <link rel="stylesheet" href="styles.css?v=20260914-ref2va">
+    <script defer src="app.js?v=20260914-ref2va"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="../pricing.html" aria-label="Freyr Technology AI">
+        <img src="../assets/logo_with_name.png" alt="Freyr Technology AI">
+      </a>
+      <div class="topbar-copy">
+        <strong>MiniMax H3</strong>
+        <span>Ref2VA Studio</span>
+      </div>
+      <button class="auth-toggle" id="authToggle" type="button" aria-expanded="false" aria-controls="authPanel">
+        <span class="status-dot" id="authDot" aria-hidden="true"></span>
+        Request headers
+      </button>
+    </header>
+
+    <section class="auth-panel" id="authPanel" hidden>
+      <form id="accessForm">
+        <div>
+          <label for="authHeaders">Request headers</label>
+          <p>与 Model List 共用浏览器本地配置，不会写入页面源码。</p>
+        </div>
+        <textarea id="authHeaders" name="authHeaders" rows="4" spellcheck="false" placeholder="Authorization: Bearer &lt;API_KEY&gt;&#10;CF-Access-Client-Id: ...&#10;CF-Access-Client-Secret: ..."></textarea>
+        <div class="auth-actions">
+          <button class="button primary" type="submit">保存 headers</button>
+          <button class="button ghost" id="clearHeaders" type="button">清除</button>
+        </div>
+      </form>
+    </section>
+
+    <main class="studio-shell">
+      <section class="composer" aria-labelledby="composerTitle">
+        <div class="mode-tabs" role="tablist" aria-label="视频生成模式">
+          <button type="button" role="tab" aria-selected="false" disabled title="暂未开放">
+            FL2VA · 文/图生视频
+            <span>暂未开放</span>
+          </button>
+          <button class="active" type="button" role="tab" aria-selected="true">
+            Ref2VA · 多参考
+            <span>图片 · 视频 · 音频</span>
+          </button>
+        </div>
+
+        <form id="generationForm">
+          <div class="section-heading">
+            <div>
+              <span class="kicker">创作意图</span>
+              <h1 id="composerTitle">用参考素材生成视频</h1>
+            </div>
+            <span class="protocol-badge">IR first</span>
+          </div>
+
+          <label class="field-label" for="intentInput">描述希望生成的内容</label>
+          <div class="prompt-wrap">
+            <textarea id="intentInput" rows="7" maxlength="7000" placeholder="例如：保持人物身份一致，人物自然转身后向镜头走来；参考动作视频的节奏，使用音频中的对白，镜头平稳、电影感光影。"></textarea>
+            <span id="promptCount">0 / 7000</span>
+          </div>
+
+          <div class="asset-heading">
+            <div>
+              <span class="field-label">参考素材</span>
+              <span class="asset-help">同类素材按页面顺序编号，并由 IR 生成最终提示词</span>
+            </div>
+            <div class="asset-counts" aria-live="polite">
+              <span id="imageCount">图片 0/9</span>
+              <span id="videoCount">视频 0/3</span>
+              <span id="audioCount">音频 0/3</span>
+            </div>
+          </div>
+
+          <input id="assetInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a" multiple hidden>
+          <button class="dropzone" id="dropzone" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
+            <strong>点击或拖拽上传素材</strong>
+            <span>图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB</span>
+          </button>
+          <div class="asset-list" id="assetList" aria-live="polite"></div>
+
+          <div class="settings-grid">
+            <fieldset>
+              <legend>型号</legend>
+              <select id="modelSelect" aria-label="MiniMax H3 型号">
+                <option value="MiniMax/MiniMax-H3-SH1">SH1 · 推荐</option>
+                <option value="MiniMax/MiniMax-H3-SH2">SH2</option>
+                <option value="MiniMax/MiniMax-H3-SH3">SH3</option>
+                <option value="MiniMax/MiniMax-H3-SH4">SH4</option>
+              </select>
+            </fieldset>
+
+            <fieldset>
+              <legend>输出画质</legend>
+              <div class="segmented" data-control="quality">
+                <button class="active" type="button" data-value="768P">768P</button>
+                <button type="button" data-value="2K">2K <small>自动超分</small></button>
+              </div>
+              <input id="qualityInput" type="hidden" value="768P">
+            </fieldset>
+
+            <fieldset>
+              <legend>视频时长</legend>
+              <div class="range-row">
+                <input id="secondsInput" type="range" min="5" max="15" step="1" value="5">
+                <output id="secondsOutput" for="secondsInput">5 秒</output>
+              </div>
+            </fieldset>
+
+            <fieldset class="ratio-fieldset">
+              <legend>画面比例</legend>
+              <div class="ratio-grid" data-control="ratio">
+                <button type="button" data-value="adaptive">自动</button>
+                <button type="button" data-value="21:9">21:9</button>
+                <button class="active" type="button" data-value="16:9">16:9</button>
+                <button type="button" data-value="4:3">4:3</button>
+                <button type="button" data-value="1:1">1:1</button>
+                <button type="button" data-value="3:4">3:4</button>
+                <button type="button" data-value="9:16">9:16</button>
+              </div>
+              <input id="ratioInput" type="hidden" value="16:9">
+            </fieldset>
+
+            <fieldset>
+              <legend>随机种子 <span>可选</span></legend>
+              <input id="seedInput" type="number" step="1" placeholder="留空则随机生成">
+            </fieldset>
+          </div>
+
+          <div class="form-message" id="formMessage" role="alert" hidden></div>
+          <button class="create-button" id="prepareButton" type="submit">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 9-14 9V3Z"/></svg>
+            生成 IR 方案
+          </button>
+          <p class="submit-note">先上传素材并生成 IR，核对素材映射后才会提交 H3 任务。</p>
+        </form>
+      </section>
+
+      <section class="workspace" aria-labelledby="workspaceTitle">
+        <div class="workspace-head">
+          <div>
+            <span class="kicker">生成任务</span>
+            <h2 id="workspaceTitle">IR 与视频结果</h2>
+          </div>
+          <button class="button ghost compact" id="resetTask" type="button">新建任务</button>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+          <div class="empty-visual" aria-hidden="true">
+            <span></span><span></span><span></span>
+            <svg viewBox="0 0 24 24"><path d="m9 8 7 4-7 4V8Z"/></svg>
+          </div>
+          <strong>准备好参考素材后，从左侧开始</strong>
+          <p>这里会显示 IR 素材映射、H3 生成进度，以及可选的 2K 超分结果。</p>
+        </div>
+
+        <div class="task-view" id="taskView" hidden>
+          <ol class="pipeline" aria-label="任务处理阶段">
+            <li data-stage="assets"><span>1</span><div><strong>素材上传</strong><small>内容寻址缓存</small></div></li>
+            <li data-stage="ir"><span>2</span><div><strong>IR 编排</strong><small>生成素材映射</small></div></li>
+            <li data-stage="h3"><span>3</span><div><strong>H3 生成</strong><small>768P 视频</small></div></li>
+            <li data-stage="sr"><span>4</span><div><strong>2K 超分</strong><small>按需执行</small></div></li>
+          </ol>
+
+          <div class="status-card" id="statusCard">
+            <div class="status-topline">
+              <span class="live-indicator" aria-hidden="true"></span>
+              <strong id="statusTitle">正在准备</strong>
+              <span id="statusPercent">0%</span>
+            </div>
+            <div class="progress-track"><span id="progressBar"></span></div>
+            <p id="statusDetail">正在检查素材。</p>
+            <div class="job-meta" id="jobMeta"></div>
+            <button class="button danger compact" id="cancelTask" type="button" hidden>取消排队任务</button>
+          </div>
+
+          <section class="ir-review" id="irReview" hidden>
+            <div class="review-head">
+              <div>
+                <span class="kicker">提交前检查</span>
+                <h3>IR 素材映射</h3>
+              </div>
+              <span class="review-status" id="irStatus">Ready</span>
+            </div>
+            <p class="review-copy">请确认标签、素材类型和 SHA-256 与上传顺序一致。映射错误时不要提交 H3。</p>
+            <div class="final-prompt" id="finalPrompt" hidden>
+              <strong>IR 最终提示词</strong>
+              <p></p>
+            </div>
+            <div class="manifest-list" id="manifestList"></div>
+            <div class="review-actions">
+              <button class="button primary" id="confirmGenerate" type="button">确认映射并生成视频</button>
+              <button class="button ghost" id="rebuildIr" type="button">重新生成 IR</button>
+            </div>
+          </section>
+
+          <section class="result-card" id="resultCard" hidden>
+            <video id="resultVideo" controls playsinline preload="metadata"></video>
+            <div class="result-info">
+              <div>
+                <span class="kicker" id="resultQuality">768P output</span>
+                <h3>视频生成完成</h3>
+                <p id="resultSummary"></p>
+              </div>
+              <button class="button primary" id="downloadVideo" type="button">下载 MP4</button>
+            </div>
+          </section>
+
+          <details class="diagnostics" id="diagnostics">
+            <summary>任务详情</summary>
+            <pre id="diagnosticOutput"></pre>
+          </details>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
