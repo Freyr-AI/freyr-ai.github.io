@@ -255,6 +255,22 @@ legend span { color: var(--muted); font-weight: 600; }
 .diagnostics summary { padding: 10px 12px; cursor: pointer; color: #555a65; font-size: 11px; font-weight: 750; }
 .diagnostics pre { max-height: 260px; margin: 0; padding: 12px; overflow: auto; border-top: 1px solid var(--line); background: #171821; color: #e7e8ee; font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
 
+.history-panel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.history-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.history-notice { margin-top: 8px; padding: 9px 10px; border-radius: 9px; color: var(--warning); background: rgba(155, 103, 25, 0.08); font-size: 10px; }
+.history-message { margin-top: 8px; color: var(--success); font-size: 10px; }
+.history-message.error { color: var(--danger); }
+.history-list { display: grid; gap: 8px; margin-top: 10px; }
+.history-empty { padding: 18px; border: 1px dashed var(--line-strong); border-radius: 10px; color: var(--muted); font-size: 11px; text-align: center; }
+.history-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
+.history-copy { min-width: 0; }
+.history-copy strong, .history-copy span, .history-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-copy strong { font-size: 11px; }
+.history-copy span { margin-top: 2px; color: var(--muted); font-size: 9px; }
+.history-copy small { margin-top: 2px; color: var(--muted); font: 8px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.history-status { padding: 4px 7px; border-radius: 999px; color: var(--purple-dark); background: var(--purple-soft); font-size: 9px; font-weight: 800; }
+.history-actions { display: flex; flex-wrap: wrap; grid-column: 1 / -1; gap: 6px; }
+
 .button { min-height: 38px; padding: 8px 12px; border: 1px solid transparent; border-radius: 9px; font-weight: 780; }
 .button.primary { color: #fff; background: var(--purple); }
 .button.ghost { color: #4e535e; border-color: var(--line-strong); background: #fff; }
@@ -284,4 +300,5 @@ legend span { color: var(--muted); font-weight: 600; }
   .manifest-item span { grid-column: 2; }
   .result-info { align-items: stretch; flex-direction: column; }
   .result-info .button { width: 100%; }
+  .history-head { align-items: flex-start; }
 }

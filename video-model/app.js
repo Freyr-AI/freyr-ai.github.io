@@ -2,6 +2,8 @@ const DEFAULT_ORIGIN = "https://test.token-exchange-ai.com";
 const API_NATIVE_ROOT = `${DEFAULT_ORIGIN}/api/native`;
 const API_V1_ROOT = `${API_NATIVE_ROOT}/v1`;
 const HEADERS_STORAGE_KEY = "freyrModelListHeaders";
+const HISTORY_STORAGE_KEY = "freyrVideoModelHistoryV1";
+const MAX_HISTORY_ITEMS = 50;
 const MAX_ASSETS = { image: 9, video: 3, audio: 3 };
 const MAX_TOTAL_ASSETS = 12;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
@@ -24,6 +26,15 @@ const ALLOWED_MIME = {
   "audio/x-m4a": "audio"
 };
 
+function loadHistory() {
+  try {
+    const records = JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || "[]");
+    return Array.isArray(records) ? records.filter((record) => record?.id && record?.model).slice(0, MAX_HISTORY_ITEMS) : [];
+  } catch {
+    return [];
+  }
+}
+
 const state = {
   headerText: localStorage.getItem(HEADERS_STORAGE_KEY) || "",
   assets: [],
@@ -36,7 +47,9 @@ const state = {
   srJob: null,
   desiredQuality: "768P",
   abortController: null,
-  resultObjectUrl: ""
+  resultObjectUrl: "",
+  uploadedAssets: new Map(),
+  history: loadHistory()
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -202,6 +215,131 @@ async function fetchEventStreamResult(url, options = {}) {
   throw new Error("IR 事件流在返回结果前已结束。");
 }
 
+function historyStatusLabel(status) {
+  return {
+    queued: "排队中",
+    retrying: "等待重试",
+    running: "生成中",
+    completed: "已完成",
+    failed: "失败",
+    cancelled: "已取消"
+  }[String(status || "").toLowerCase()] || status || "未知";
+}
+
+function formatHistoryTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("zh-CN", { hour12: false });
+}
+
+function persistHistory() {
+  try {
+    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(state.history.slice(0, MAX_HISTORY_ITEMS)));
+  } catch {
+    setHistoryMessage("浏览器无法保存本地历史记录，请检查隐私模式或存储空间。", true);
+  }
+}
+
+function rememberJob(job, model, phase) {
+  if (!job?.id || !model) return;
+  const previous = state.history.find((record) => record.id === job.id) || {};
+  const settings = state.preparedSettings || {};
+  const record = {
+    ...previous,
+    id: job.id,
+    model,
+    phase,
+    quality: phase === "sr" ? "2K" : "768P",
+    status: job.status || previous.status || "queued",
+    progress: Number(job.progress) || 0,
+    currentStage: job.current_stage || previous.currentStage || "",
+    seconds: settings.seconds ?? previous.seconds ?? null,
+    ratio: settings.ratio || previous.ratio || "",
+    sourceJobId: phase === "sr" ? (job.source_job_id || state.h3Job?.id || previous.sourceJobId || "") : "",
+    createdAt: previous.createdAt || job.created_at || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  state.history = [record, ...state.history.filter((item) => item.id !== record.id)].slice(0, MAX_HISTORY_ITEMS);
+  persistHistory();
+  renderHistory();
+}
+
+function setHistoryMessage(message = "", error = false) {
+  const node = $("#historyMessage");
+  if (!node) return;
+  node.textContent = message;
+  node.classList.toggle("error", error);
+  node.hidden = !message;
+}
+
+function renderHistory() {
+  const list = $("#historyList");
+  if (!list) return;
+  $("#clearHistory").disabled = !state.history.length;
+  if (!state.history.length) {
+    list.innerHTML = '<p class="history-empty">此浏览器还没有保存视频任务。</p>';
+    return;
+  }
+  list.innerHTML = state.history.map((record) => {
+    const completed = String(record.status).toLowerCase() === "completed";
+    const details = [
+      record.quality,
+      record.ratio,
+      Number.isFinite(record.seconds) ? `${record.seconds} 秒` : "",
+      formatHistoryTime(record.createdAt)
+    ].filter(Boolean).join(" · ");
+    return `
+      <article class="history-item" data-history-id="${escapeHtml(record.id)}">
+        <div class="history-copy">
+          <strong>${escapeHtml(record.phase === "sr" ? "2K 超分" : "H3 生成")} · ${escapeHtml(record.id)}</strong>
+          <span>${escapeHtml(details)}</span>
+          <small>${escapeHtml(record.model)}</small>
+        </div>
+        <span class="history-status">${escapeHtml(historyStatusLabel(record.status))}</span>
+        <div class="history-actions">
+          <button class="button ghost compact" type="button" data-history-refresh="${escapeHtml(record.id)}">刷新状态</button>
+          <button class="button primary compact" type="button" data-history-download="${escapeHtml(record.id)}" ${completed ? "" : "disabled"}>下载</button>
+          <button class="button ghost compact" type="button" data-history-remove="${escapeHtml(record.id)}">移除记录</button>
+        </div>
+      </article>`;
+  }).join("");
+}
+
+async function refreshHistoryJob(record, button) {
+  if (!record) return;
+  button.disabled = true;
+  setHistoryMessage(`正在刷新 ${record.id}…`);
+  try {
+    const job = await fetchJobWithRetry(record.id, record.model);
+    rememberJob(job, record.model, record.phase);
+    setHistoryMessage(`${record.id}：${historyStatusLabel(job.status)}`);
+  } catch (error) {
+    setHistoryMessage(`${record.id}：${friendlyError(error)}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function downloadHistoryJob(record, button) {
+  if (!record) return;
+  button.disabled = true;
+  setHistoryMessage(`正在下载 ${record.id}…`);
+  try {
+    const response = await fetch(contentUrl(record, record.model), { headers: authHeaders() });
+    if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response));
+    const objectUrl = URL.createObjectURL(await response.blob());
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = `${record.id}-${String(record.quality || "video").toLowerCase()}.mp4`;
+    anchor.click();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 30_000);
+    setHistoryMessage(`${record.id}：下载已开始。`);
+  } catch (error) {
+    setHistoryMessage(`${record.id}：${friendlyError(error)}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 function showFormMessage(message = "") {
   const node = $("#formMessage");
   node.textContent = message;
@@ -279,6 +417,7 @@ function addFiles(files) {
 function removeAsset(id) {
   const asset = state.assets.find((item) => item.id === id);
   if (asset?.previewUrl) URL.revokeObjectURL(asset.previewUrl);
+  state.uploadedAssets.delete(id);
   state.assets = state.assets.filter((item) => item.id !== id);
   renderAssets();
 }
@@ -378,8 +517,14 @@ function setCancelVisible(visible) {
 }
 
 async function uploadAsset(asset, index, total) {
+  const sha256 = await sha256Hex(asset.file);
+  const cached = state.uploadedAssets.get(asset.id);
+  if (cached?.sha256 === sha256) {
+    setStatus("正在复用参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
+    return { ...asset, sha256 };
+  }
   setStatus("正在上传参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
-  const [sha256, dataUri] = await Promise.all([sha256Hex(asset.file), fileToDataUri(asset.file)]);
+  const dataUri = await fileToDataUri(asset.file);
   const body = JSON.stringify({ data: dataUri });
   if (new Blob([body]).size > MAX_JSON_BODY_BYTES) {
     throw new Error(`${asset.file.name} 编码后的上传请求超过 11 MB，请压缩素材后重试。`);
@@ -390,6 +535,7 @@ async function uploadAsset(asset, index, total) {
     body,
     signal: state.abortController.signal
   });
+  state.uploadedAssets.set(asset.id, { sha256 });
   return { ...asset, sha256 };
 }
 
@@ -547,15 +693,15 @@ async function fetchJobWithRetry(jobId, model) {
       return await fetchJson(url, {
         headers: authHeaders(),
         cache: "no-store",
-        signal: state.abortController.signal
+        signal: state.abortController?.signal
       });
     } catch (error) {
       if (error instanceof ApiError && error.status === 429) {
-        await delay(retryAfterMs(error, 15_000), state.abortController.signal);
+        await delay(retryAfterMs(error, 15_000), state.abortController?.signal);
         continue;
       }
       if (!(error instanceof ApiError) || !TRANSIENT_STATUS_CODES.has(error.status) || attempt === 3) throw error;
-      await delay([500, 1_000, 2_000][attempt] || 2_000, state.abortController.signal);
+      await delay([500, 1_000, 2_000][attempt] || 2_000, state.abortController?.signal);
     }
   }
   throw new Error("状态查询失败。");
@@ -566,6 +712,7 @@ async function pollJob(initialJob, model, phase) {
   const startedAt = Date.now();
   const baseDelay = phase === "sr" ? SR_POLL_BASE_MS : H3_POLL_BASE_MS;
   while (!TERMINAL_STATUSES.has(String(job.status || "").toLowerCase())) {
+    rememberJob(job, model, phase);
     if (Date.now() - startedAt > JOB_TIMEOUT_MS) throw new Error(`等待 ${phase === "sr" ? "2K 超分" : "H3"} 任务超过 40 分钟。Job ID: ${job.id}`);
     state.currentJob = { ...job, model, phase };
     const progress = Number(job.progress) || 0;
@@ -577,6 +724,7 @@ async function pollJob(initialJob, model, phase) {
     await delay(baseDelay + jitter, state.abortController.signal);
     job = await fetchJobWithRetry(job.id, model);
   }
+  rememberJob(job, model, phase);
   setCancelVisible(false);
   if (String(job.status).toLowerCase() !== "completed") {
     const detail = job.error?.message || job.error?.code || `任务状态：${job.status}`;
@@ -607,6 +755,7 @@ async function createH3Job() {
       body: JSON.stringify(payload),
       signal: state.abortController.signal
     });
+    rememberJob(created, model, "h3");
     state.h3Job = await pollJob(created, model, "h3");
     updatePipeline(state.preparedSettings.quality === "2K" ? "sr" : "", ["assets", "ir", "h3"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
     if (state.preparedSettings.quality === "2K") {
@@ -633,6 +782,7 @@ async function createSrJob(sourceJobId) {
     body: JSON.stringify({ model, source_job_id: sourceJobId }),
     signal: state.abortController.signal
   });
+  rememberJob(created, model, "sr");
   state.srJob = await pollJob(created, model, "sr");
   updatePipeline("", ["assets", "ir", "h3", "sr"]);
   await showCompletedVideo(state.srJob, "2K");
@@ -781,6 +931,28 @@ function bindEvents() {
   $("#rebuildIr").addEventListener("click", prepareIr);
   $("#cancelTask").addEventListener("click", cancelCurrentJob);
   $("#resetTask").addEventListener("click", resetTask);
+  $("#clearHistory").addEventListener("click", () => {
+    state.history = [];
+    localStorage.removeItem(HISTORY_STORAGE_KEY);
+    setHistoryMessage("已清空此浏览器中的任务记录。所有服务端任务和文件均未删除。");
+    renderHistory();
+  });
+  $("#historyList").addEventListener("click", (event) => {
+    const refresh = event.target.closest("[data-history-refresh]");
+    const download = event.target.closest("[data-history-download]");
+    const remove = event.target.closest("[data-history-remove]");
+    const id = refresh?.dataset.historyRefresh || download?.dataset.historyDownload || remove?.dataset.historyRemove;
+    if (!id) return;
+    const record = state.history.find((item) => item.id === id);
+    if (refresh) refreshHistoryJob(record, refresh);
+    if (download) downloadHistoryJob(record, download);
+    if (remove) {
+      state.history = state.history.filter((item) => item.id !== id);
+      persistHistory();
+      setHistoryMessage(`已从此浏览器移除 ${id}。服务端任务和文件未删除。`);
+      renderHistory();
+    }
+  });
   $("#downloadVideo").addEventListener("click", () => {
     if (!state.resultObjectUrl) return;
     const anchor = document.createElement("a");
@@ -796,3 +968,4 @@ function bindEvents() {
 
 bindEvents();
 renderAssets();
+renderHistory();

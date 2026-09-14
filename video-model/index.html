@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20260914-auto-save-headers">
-    <script defer src="app.js?v=20260914-ir-sse-v2"></script>
+    <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
+    <script defer src="app.js?v=20260914-history-v1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -220,6 +220,19 @@
             <pre id="diagnosticOutput"></pre>
           </details>
         </div>
+
+        <section class="history-panel" aria-labelledby="historyTitle">
+          <div class="history-head">
+            <div>
+              <span class="kicker">本地任务</span>
+              <h3 id="historyTitle">浏览器历史记录</h3>
+            </div>
+            <button class="button ghost compact" id="clearHistory" type="button">清空本地记录</button>
+          </div>
+          <p class="history-notice">这是测试 Playground。这里只在当前浏览器保存任务编号和状态，不保存参考素材或视频文件；服务端生成文件不会长期保留，请在完成后及时下载。</p>
+          <p class="history-message" id="historyMessage" role="status" hidden></p>
+          <div class="history-list" id="historyList"></div>
+        </section>
       </section>
     </main>
   </body>
