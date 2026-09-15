@@ -150,7 +150,8 @@ function friendlyError(error) {
 function scrubSensitiveText(value) {
   return String(value || "")
     .replace(/data:[^;,\s]+;base64,[A-Za-z0-9+/=]+/gi, "[media data redacted]")
-    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+/gi, "Bearer [redacted]");
+    .replace(/Bearer\s+[A-Za-z0-9._~+/-]+/gi, "Bearer [redacted]")
+    .replace(/light[\s_-]*x2v(?:[_-][a-z0-9]+)*/gi, "视频生成中");
 }
 
 class ApiError extends Error {
@@ -257,7 +258,7 @@ function rememberJob(job, model, phase) {
     quality: phase === "sr" ? "2K" : "768P",
     status: job.status || previous.status || "queued",
     progress: Number(job.progress) || 0,
-    currentStage: job.current_stage || previous.currentStage || "",
+    currentStage: scrubSensitiveText(job.current_stage || previous.currentStage || ""),
     seconds: settings.seconds ?? previous.seconds ?? null,
     ratio: settings.ratio || previous.ratio || "",
     sourceJobId: phase === "sr" ? (job.source_job_id || state.h3Job?.id || previous.sourceJobId || "") : "",
@@ -484,8 +485,8 @@ function updatePipeline(stage, completeStages = [], skippedStages = []) {
 
 function setStatus(title, detail, percent = 0, type = "") {
   showTaskView();
-  $("#statusTitle").textContent = title;
-  $("#statusDetail").textContent = detail;
+  $("#statusTitle").textContent = scrubSensitiveText(title);
+  $("#statusDetail").textContent = scrubSensitiveText(detail);
   $("#statusPercent").textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`;
   $("#progressBar").style.width = `${Math.max(0, Math.min(100, percent))}%`;
   $("#statusCard").className = `status-card ${type}`.trim();
@@ -502,15 +503,17 @@ function setJobMeta(job, label) {
     job.status && ["状态", job.status],
     job.current_stage && ["处理", job.current_stage]
   ].filter(Boolean);
-  $("#jobMeta").innerHTML = entries.map(([name, value]) => `<span>${escapeHtml(name)}: ${escapeHtml(value)}</span>`).join("");
+  $("#jobMeta").innerHTML = entries.map(([name, value]) => `<span>${escapeHtml(name)}: ${escapeHtml(scrubSensitiveText(value))}</span>`).join("");
 }
 
 function safeDiagnosticValue(value) {
+  if (typeof value === "string") return scrubSensitiveText(value);
   if (!value || typeof value !== "object") return value;
   if (Array.isArray(value)) return value.map(safeDiagnosticValue);
   return Object.fromEntries(Object.entries(value).map(([key, item]) => {
-    if (/authorization|secret|client.?id|uri|data/i.test(key)) return [key, "[redacted]"];
-    return [key, safeDiagnosticValue(item)];
+    const safeKey = scrubSensitiveText(key);
+    if (/authorization|secret|client.?id|uri|data/i.test(key)) return [safeKey, "[redacted]"];
+    return [safeKey, safeDiagnosticValue(item)];
   }));
 }
 
