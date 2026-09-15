@@ -198,6 +198,10 @@ async function fetchEventStreamResult(url, options = {}) {
     buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
     const frames = buffer.replaceAll("\r\n", "\n").split("\n\n");
     buffer = frames.pop() || "";
+    if (done && buffer.trim()) {
+      frames.push(buffer);
+      buffer = "";
+    }
     for (const frame of frames) {
       const lines = frame.split("\n");
       const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
@@ -227,7 +231,9 @@ function historyStatusLabel(status) {
 }
 
 function formatHistoryTime(value) {
-  const date = new Date(value);
+  const numeric = typeof value === "number" ? value : Number(value);
+  const normalized = Number.isFinite(numeric) && numeric > 0 && numeric < 1e12 ? numeric * 1000 : value;
+  const date = new Date(normalized);
   return Number.isNaN(date.getTime()) ? "" : date.toLocaleString("zh-CN", { hour12: false });
 }
 
@@ -610,6 +616,8 @@ async function prepareIr() {
   state.abortController = new AbortController();
   state.brief = null;
   state.preparedAssets = [];
+  state.currentJob = null;
+  setJobMeta(null);
   const seedValue = $("#seedInput").value.trim();
   state.preparedSettings = {
     model: $("#modelSelect").value,
@@ -856,6 +864,7 @@ function resetTask() {
   $("#emptyState").hidden = false;
   $("#irReview").hidden = true;
   $("#resultCard").hidden = true;
+  setJobMeta(null);
   setCancelVisible(false);
   setBusy(false);
   showFormMessage();
