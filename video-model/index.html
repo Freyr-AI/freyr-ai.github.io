@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=20260922-prompt-history-r1"></script>
+    <script defer src="app.js?v=20260923-audio-optional-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -95,7 +95,7 @@
                 <option value="OpenH3-IR">OpenH3-IR · 现有方案</option>
                 <option value="H3Offical-IR">H3Offical-IR · 官方规则适配</option>
               </select>
-              <small>H3Offical-IR 为实验性精简规则适配，并非完整执行官方 skill 或 MiniMax 官方服务；建议先用业务素材评估。</small>
+              <small>H3Offical-IR 使用完整官方 skill 文件，由 Freyr 模型执行，非 MiniMax 官方服务。音频用途默认不传，按提示词和文件名推断，请核对结果。</small>
             </fieldset>
             <fieldset>
               <legend>型号</legend>
@@ -200,6 +200,7 @@
               <span class="review-status" id="irStatus">Ready</span>
             </div>
             <p class="review-copy">请确认标签、素材类型和 SHA-256 与上传顺序一致。映射错误时不要提交 H3。</p>
+            <p id="audioResolution" style="white-space: pre-wrap; overflow-wrap: anywhere" hidden></p>
             <div class="final-prompt" id="finalPrompt" hidden>
               <strong>IR 最终提示词</strong>
               <p></p>

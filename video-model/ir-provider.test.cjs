@@ -40,6 +40,21 @@ test("validation reasons are visible", () => {
   assert.match(result, /missing voice binding/);
 });
 
+test("official audio omits optional role/note; old IR payload stays unchanged", () => {
+  const {ctx} = context();
+  const result = vm.runInContext(`irAssetPayload({type:'audio',sha256:'a',file:{name:'林雪音色.wav'}}, 'H3Offical-IR')`, ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {kind:'audio',sha256:'a',filename:'林雪音色.wav'});
+  const old = vm.runInContext(`irAssetPayload({type:'audio',sha256:'a',file:{name:'林雪音色.wav'}}, 'OpenH3-IR')`, ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(old)), {kind:'audio',sha256:'a'});
+});
+
+test("audio inference is visible as text for review", () => {
+  const {ctx, nodes} = context();
+  vm.runInContext(`renderIrReview({id:'x',audio_resolution:[{label:'<Audio 1>',filename:'林雪音色.wav',role:'voice',note:'林雪',inferred:true}],ir:{manifest:[]}})`, ctx);
+  assert.equal(nodes.get('#audioResolution').hidden, false);
+  assert.match(nodes.get('#audioResolution').textContent, /自动推断，请核对/);
+});
+
 test("submitted prompt survives completion, reset and another task refresh", () => {
   const {ctx} = context();
   vm.runInContext(`

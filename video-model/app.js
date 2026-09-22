@@ -401,15 +401,7 @@ function renderAssets() {
         <div class="asset-copy">
           <strong>${assetTypeLabel(asset.type)} ${asset.number} · ${escapeHtml(asset.file.name)}</strong>
           <span>${escapeHtml(asset.file.type)} · ${formatBytes(asset.file.size)}</span>
-          ${asset.type === "audio" ? `
-            <label>音频用途
-              <select data-audio-role="${asset.id}" aria-label="音频 ${asset.number} 用途">
-                ${[["", "请选择用途"], ["voice", "人物音色"], ["bgm", "背景音乐"], ["sound", "环境 / 音效"], ["reuse", "复用原音频"]].map(([value, label]) => `<option value="${value}" ${asset.role === value ? "selected" : ""}>${label}</option>`).join("")}
-              </select>
-            </label>
-            <label>角色 / 用途说明
-              <input data-audio-note="${asset.id}" maxlength="2000" value="${escapeHtml(asset.note || "")}" placeholder="例如：林雪的女声音色，只用于林雪对白，不是 BGM">
-            </label>` : ""}
+          ${asset.type === "audio" ? '<small>H3Offical-IR 根据提示词和文件名判断用途，无需单独填写。建议使用“林雪音色.wav”等清晰命名。</small>' : ""}
         </div>
         <div class="asset-actions">
           <button class="icon-button" type="button" data-move="up" data-id="${asset.id}" aria-label="向前移动" ${index === 0 ? "disabled" : ""}>↑</button>
@@ -466,9 +458,6 @@ function moveAsset(id, direction) {
 function validateInput() {
   if ($("#irProvider").value === "H3Offical-IR" && $("#ratioInput").value === "adaptive") {
     return "H3Offical-IR 请明确选择画面比例（如 16:9 或 9:16），暂不支持自动比例。";
-  }
-  if ($("#irProvider").value === "H3Offical-IR" && state.assets.some((asset) => asset.type === "audio" && (!asset.role || !asset.note?.trim()))) {
-    return "H3Offical-IR 需要为每段音频明确选择用途并填写角色 / 用途说明；台词请在创作意图中用引号逐字写出。";
   }
   if (!authIsComplete()) return "请先配置 Authorization 和两项 Cloudflare Access headers。";
   if (!$("#intentInput").value.trim()) return "请填写创作意图。";
@@ -634,8 +623,18 @@ function renderIrReview(brief) {
   const prompt = brief?.ir?.prompt || brief?.ir?.final_prompt || brief?.final_prompt || brief?.prompt || "";
   $("#finalPrompt").hidden = !prompt;
   $("#finalPrompt p").textContent = prompt;
+  const audio = Array.isArray(brief.audio_resolution) ? brief.audio_resolution : [];
+  $("#audioResolution").hidden = !audio.length;
+  $("#audioResolution").textContent = audio.map((item) =>
+    `${item.label} · ${item.filename || "未提供文件名"} · ${item.role} · ${item.note}（${item.inferred ? "自动推断，请核对" : "显式指定"}）`
+  ).join("\n");
   $("#confirmGenerate").disabled = state.busy || !brief?.id || !state.irVerified;
   setDiagnostics({ brief: safeDiagnosticValue(brief), expected_manifest: expected });
+}
+
+function irAssetPayload(asset, provider) {
+  return {sha256: asset.sha256, kind: asset.type,
+    ...(provider === "H3Offical-IR" && asset.type === "audio" ? {filename: asset.file.name} : {})};
 }
 
 async function prepareIr() {
@@ -682,11 +681,7 @@ async function prepareIr() {
       model: "IR",
       ir_provider: state.preparedSettings.irProvider,
       intent: $("#intentInput").value.trim(),
-      assets: state.preparedAssets.map((asset) => ({
-        sha256: asset.sha256,
-        kind: asset.type,
-        ...(state.preparedSettings.irProvider === "H3Offical-IR" && asset.type === "audio" ? {role: asset.role, note: asset.note.trim()} : {})
-      })),
+      assets: state.preparedAssets.map((asset) => irAssetPayload(asset, state.preparedSettings.irProvider)),
       seconds: state.preparedSettings.seconds,
       aspect: state.preparedSettings.ratio,
       creativity: "restrained",
@@ -958,17 +953,6 @@ function bindEvents() {
     $("#irReview").hidden = true;
     $("#confirmGenerate").disabled = true;
     showFormMessage("IR 已切换，请重新生成方案。已有视频任务不受影响。");
-  });
-  $("#assetList").addEventListener("input", (event) => {
-    const id = event.target.dataset.audioNote || event.target.dataset.audioRole;
-    const asset = state.assets.find((item) => item.id === id);
-    if (!asset) return;
-    if (event.target.dataset.audioNote) asset.note = event.target.value;
-    if (event.target.dataset.audioRole) asset.role = event.target.value;
-    state.brief = null;
-    state.irVerified = false;
-    $("#irReview").hidden = true;
-    $("#confirmGenerate").disabled = true;
   });
   $("#dropzone").addEventListener("click", () => $("#assetInput").click());
   $("#assetInput").addEventListener("change", (event) => {
