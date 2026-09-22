@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=20260916-public-stage-v1"></script>
+    <script defer src="app.js?v=20260922-ir-provider-v1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -89,6 +89,14 @@
           <div class="asset-list" id="assetList" aria-live="polite"></div>
 
           <div class="settings-grid">
+            <fieldset>
+              <legend>提示词优化 IR</legend>
+              <select id="irProvider" aria-label="提示词优化 IR">
+                <option value="OpenH3-IR">OpenH3-IR · 现有方案</option>
+                <option value="H3Offical-IR">H3Offical-IR · 官方规则适配</option>
+              </select>
+              <small>H3Offical-IR 是 Freyr 基于官方 Ref2VA skill 的独立实现，非 MiniMax 官方服务。</small>
+            </fieldset>
             <fieldset>
               <legend>型号</legend>
               <select id="modelSelect" aria-label="MiniMax H3 型号">

@@ -133,7 +133,8 @@ function friendlyError(error) {
     if (nestedDetail && typeof nestedDetail === "object") {
       const code = typeof nestedDetail.code === "string" ? nestedDetail.code : "";
       const message = typeof nestedDetail.message === "string" ? nestedDetail.message : "";
-      detail = [code, message].filter(Boolean).join(" · ");
+      const reasons = Array.isArray(nestedDetail.errors) ? nestedDetail.errors.join("; ") : "";
+      detail = [code, message, reasons].filter(Boolean).join(" · ");
       if (!detail) {
         try {
           detail = JSON.stringify(nestedDetail);
@@ -384,6 +385,15 @@ function renderAssets() {
         <div class="asset-copy">
           <strong>${assetTypeLabel(asset.type)} ${asset.number} · ${escapeHtml(asset.file.name)}</strong>
           <span>${escapeHtml(asset.file.type)} · ${formatBytes(asset.file.size)}</span>
+          ${asset.type === "audio" ? `
+            <label>音频用途
+              <select data-audio-role="${asset.id}" aria-label="音频 ${asset.number} 用途">
+                ${[["", "请选择用途"], ["voice", "人物音色"], ["bgm", "背景音乐"], ["sound", "环境 / 音效"], ["reuse", "复用原音频"]].map(([value, label]) => `<option value="${value}" ${asset.role === value ? "selected" : ""}>${label}</option>`).join("")}
+              </select>
+            </label>
+            <label>角色 / 用途说明
+              <input data-audio-note="${asset.id}" maxlength="2000" value="${escapeHtml(asset.note || "")}" placeholder="例如：林雪的女声音色，只用于林雪对白，不是 BGM">
+            </label>` : ""}
         </div>
         <div class="asset-actions">
           <button class="icon-button" type="button" data-move="up" data-id="${asset.id}" aria-label="向前移动" ${index === 0 ? "disabled" : ""}>↑</button>
@@ -438,6 +448,12 @@ function moveAsset(id, direction) {
 }
 
 function validateInput() {
+  if ($("#irProvider").value === "H3Offical-IR" && $("#ratioInput").value === "adaptive") {
+    return "H3Offical-IR 请明确选择画面比例（如 16:9 或 9:16），暂不支持自动比例。";
+  }
+  if ($("#irProvider").value === "H3Offical-IR" && state.assets.some((asset) => asset.type === "audio" && (!asset.role || !asset.note?.trim()))) {
+    return "H3Offical-IR 需要为每段音频明确选择用途并填写角色 / 用途说明；台词请在创作意图中用引号逐字写出。";
+  }
   if (!authIsComplete()) return "请先配置 Authorization 和两项 Cloudflare Access headers。";
   if (!$("#intentInput").value.trim()) return "请填写创作意图。";
   if (!state.assets.length) return "请至少上传一项参考素材。";
@@ -465,7 +481,8 @@ async function sha256Hex(file) {
 function setBusy(busy) {
   state.busy = busy;
   $("#prepareButton").disabled = busy;
-  $("#confirmGenerate").disabled = busy;
+  $("#confirmGenerate").disabled = busy || !state.brief?.id || !state.irVerified;
+  $("#irProvider").disabled = busy;
   $("#rebuildIr").disabled = busy;
 }
 
@@ -578,17 +595,19 @@ function renderIrReview(brief) {
   const expected = expectedManifest(state.preparedAssets);
   const actual = manifestFromBrief(brief);
   const rows = expected.map((item, index) => {
-    const match = actual.find((entry) => manifestEntrySha(entry) === item.sha256) || actual[index];
+    const match = actual[index];
     const shaMatches = manifestEntrySha(match) === item.sha256;
     const kindMatches = manifestEntryKind(match) === item.kind;
     const label = manifestEntryLabel(match) || item.label;
-    const matches = shaMatches && kindMatches;
+    const matches = shaMatches && kindMatches && label === item.label;
     return { ...item, returnedLabel: label, matches };
   });
   const manifestVerifiable = actual.length === expected.length && rows.every((row) => row.matches);
   const degraded = String(brief?.status || "").toLowerCase() === "degraded";
+  state.irVerified = manifestVerifiable && (state.preparedSettings?.irProvider !== "H3Offical-IR" ||
+    (brief?.provider === "H3Offical-IR" && brief?.validation?.passed === true && !degraded));
   $("#irReview").hidden = false;
-  $("#irStatus").textContent = degraded ? "Degraded · 请仔细核对" : manifestVerifiable ? "映射一致" : "需要人工核对";
+  $("#irStatus").textContent = `${state.preparedSettings?.irProvider || "OpenH3-IR"} · ${degraded ? "Degraded · 请仔细核对" : state.irVerified ? "映射一致" : "校验失败，禁止提交"}`;
   $("#irStatus").classList.toggle("warning", degraded || !manifestVerifiable);
   $("#manifestList").innerHTML = rows.map((row) => `
     <div class="manifest-item ${row.matches ? "" : "mismatch"}">
@@ -599,7 +618,7 @@ function renderIrReview(brief) {
   const prompt = brief?.ir?.prompt || brief?.ir?.final_prompt || brief?.final_prompt || brief?.prompt || "";
   $("#finalPrompt").hidden = !prompt;
   $("#finalPrompt p").textContent = prompt;
-  $("#confirmGenerate").disabled = state.busy || !brief?.id;
+  $("#confirmGenerate").disabled = state.busy || !brief?.id || !state.irVerified;
   setDiagnostics({ brief: safeDiagnosticValue(brief), expected_manifest: expected });
 }
 
@@ -623,6 +642,7 @@ async function prepareIr() {
   setJobMeta(null);
   const seedValue = $("#seedInput").value.trim();
   state.preparedSettings = {
+    irProvider: $("#irProvider").value,
     model: $("#modelSelect").value,
     seconds: Number($("#secondsInput").value),
     ratio: $("#ratioInput").value || "16:9",
@@ -644,10 +664,12 @@ async function prepareIr() {
     setStatus("正在生成 IR 方案", "IR 会根据创作意图编排最终提示词和素材映射。", 42);
     const briefPayload = {
       model: "IR",
+      ir_provider: state.preparedSettings.irProvider,
       intent: $("#intentInput").value.trim(),
       assets: state.preparedAssets.map((asset) => ({
         sha256: asset.sha256,
-        kind: asset.type
+        kind: asset.type,
+        ...(state.preparedSettings.irProvider === "H3Offical-IR" && asset.type === "audio" ? {role: asset.role, note: asset.note.trim()} : {})
       })),
       seconds: state.preparedSettings.seconds,
       aspect: state.preparedSettings.ratio,
@@ -745,7 +767,7 @@ async function pollJob(initialJob, model, phase) {
 }
 
 async function createH3Job() {
-  if (!state.brief?.id || !state.preparedSettings || state.busy) return;
+  if (!state.brief?.id || !state.preparedSettings || !state.irVerified || state.busy) return;
   setBusy(true);
   state.abortController = new AbortController();
   $("#irReview").hidden = true;
@@ -909,6 +931,24 @@ function bindEvents() {
   });
   $("#intentInput").addEventListener("input", () => {
     $("#promptCount").textContent = `${$("#intentInput").value.length} / 7000`;
+  });
+  $("#irProvider").addEventListener("change", () => {
+    state.brief = null;
+    state.irVerified = false;
+    $("#irReview").hidden = true;
+    $("#confirmGenerate").disabled = true;
+    showFormMessage("IR 已切换，请重新生成方案。已有视频任务不受影响。");
+  });
+  $("#assetList").addEventListener("input", (event) => {
+    const id = event.target.dataset.audioNote || event.target.dataset.audioRole;
+    const asset = state.assets.find((item) => item.id === id);
+    if (!asset) return;
+    if (event.target.dataset.audioNote) asset.note = event.target.value;
+    if (event.target.dataset.audioRole) asset.role = event.target.value;
+    state.brief = null;
+    state.irVerified = false;
+    $("#irReview").hidden = true;
+    $("#confirmGenerate").disabled = true;
   });
   $("#dropzone").addEventListener("click", () => $("#assetInput").click());
   $("#assetInput").addEventListener("change", (event) => {
