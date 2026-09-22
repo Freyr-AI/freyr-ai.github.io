@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=0ddac9f43c03255199e589a29e0d0d5ebaa10ee8"></script>
+    <script defer src="app.js?v=20260922-prompt-history-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -95,7 +95,7 @@
                 <option value="OpenH3-IR">OpenH3-IR · 现有方案</option>
                 <option value="H3Offical-IR">H3Offical-IR · 官方规则适配</option>
               </select>
-              <small>H3Offical-IR 是 Freyr 基于官方 Ref2VA skill 的独立实现，非 MiniMax 官方服务。</small>
+              <small>H3Offical-IR 为实验性精简规则适配，并非完整执行官方 skill 或 MiniMax 官方服务；建议先用业务素材评估。</small>
             </fieldset>
             <fieldset>
               <legend>型号</legend>
@@ -221,6 +221,7 @@
               </div>
               <button class="button primary" id="downloadVideo" type="button">下载 MP4</button>
             </div>
+            <div id="resultIrPrompt" style="overflow-wrap: anywhere"></div>
           </section>
 
           <details class="diagnostics" id="diagnostics">
@@ -237,7 +238,7 @@
             </div>
             <button class="button ghost compact" id="clearHistory" type="button">清空本地记录</button>
           </div>
-          <p class="history-notice">这是测试 Playground。这里只在当前浏览器保存任务编号和状态，不保存参考素材或视频文件；服务端生成文件不会长期保留，请在完成后及时下载。</p>
+          <p class="history-notice">这是测试 Playground。当前浏览器会保存任务编号、状态及本次使用的 IR prompt（可能包含业务文本），不保存参考素材或视频文件。共享设备使用后请清空本地记录；服务端生成文件不会长期保留，请及时下载。</p>
           <p class="history-message" id="historyMessage" role="status" hidden></p>
           <div class="history-list" id="historyList"></div>
         </section>

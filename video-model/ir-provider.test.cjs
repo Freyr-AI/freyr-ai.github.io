@@ -9,7 +9,7 @@ function context() {
     if (!nodes.has(selector)) nodes.set(selector, {classList: {toggle() {}}, value: "", disabled: false});
     return nodes.get(selector);
   }};
-  const ctx = vm.createContext({document, localStorage: {getItem() {return null;}}, console});
+  const ctx = vm.createContext({document, localStorage: {getItem() {return null;}, setItem() {}}, console});
   const source = fs.readFileSync(`${__dirname}/app.js`, "utf8").replace(/bindEvents\(\);\s*renderAssets\(\);\s*renderHistory\(\);\s*$/, "");
   vm.runInContext(source, ctx);
   vm.runInContext(`state.preparedAssets = [{type:'image',sha256:'a',file:{name:'test.png'}}];
@@ -38,4 +38,35 @@ test("validation reasons are visible", () => {
   const {ctx} = context();
   const result = vm.runInContext(`friendlyError(new ApiError(422, {detail:{code:'ir_validation_failed',errors:['missing voice binding']}}))`, ctx);
   assert.match(result, /missing voice binding/);
+});
+
+test("submitted prompt survives completion, reset and another task refresh", () => {
+  const {ctx} = context();
+  vm.runInContext(`
+    const submitted = snapshotIr({id:'brief1',provider:'H3Offical-IR',ir:{prompt:'original prompt'}}, {});
+    rememberJob({id:'job1',status:'queued'}, 'H3', 'h3', submitted);
+    state.brief = {id:'different',ir:{prompt:'DO NOT USE'}};
+    rememberJob({id:'job1',status:'completed'}, 'H3', 'h3');
+    state.brief = null;
+    rememberJob({id:'job1',status:'completed'}, 'H3', 'h3');`, ctx);
+  assert.equal(vm.runInContext('state.history[0].irSnapshot.prompt', ctx), 'original prompt');
+  assert.equal(vm.runInContext('state.history[0].irSnapshot.briefId', ctx), 'brief1');
+});
+
+test("SR inherits source prompt, legacy records do not borrow current prompt", () => {
+  const {ctx} = context();
+  vm.runInContext(`
+    rememberJob({id:'source'}, 'H3', 'h3', snapshotIr({id:'brief1',ir:{prompt:'source prompt'}}, {}));
+    rememberJob({id:'sr'}, 'SR', 'sr', state.history.find(r=>r.id==='source').irSnapshot);
+    rememberJob({id:'legacy',status:'completed'}, 'H3', 'h3');`, ctx);
+  assert.equal(vm.runInContext("state.history.find(r=>r.id==='sr').irSnapshot.prompt", ctx), 'source prompt');
+  assert.equal(vm.runInContext("state.history.find(r=>r.id==='legacy').irSnapshot", ctx), null);
+});
+
+test("prompt HTML is escaped and missing history is explicit", () => {
+  const {ctx} = context();
+  const html = vm.runInContext(`irSnapshotMarkup({prompt:'<script>alert(1)</script>',provider:'<b>',briefId:'x'})`, ctx);
+  assert.ok(!html.includes('<script>'));
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(vm.runInContext('irSnapshotMarkup(null)', ctx), /未保存/);
 });

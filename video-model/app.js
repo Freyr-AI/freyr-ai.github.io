@@ -247,12 +247,27 @@ function persistHistory() {
   }
 }
 
-function rememberJob(job, model, phase) {
+function snapshotIr(brief, settings) {
+  const prompt = brief?.ir?.prompt || brief?.ir?.final_prompt || brief?.final_prompt || brief?.prompt;
+  return typeof prompt === "string" && prompt ? {
+    prompt, briefId: brief.id, provider: brief.provider || settings?.irProvider || "OpenH3-IR"
+  } : null;
+}
+
+function irSnapshotMarkup(snapshot) {
+  if (!snapshot?.prompt) return '<small>此任务未保存 IR prompt（旧记录无法自动补回）。</small>';
+  return `<details class="final-prompt"><summary>查看本次使用的 IR prompt</summary>
+    <small>${escapeHtml(snapshot.provider)} · ${escapeHtml(snapshot.briefId)}</small>
+    <p>${escapeHtml(snapshot.prompt)}</p></details>`;
+}
+
+function rememberJob(job, model, phase, irSnapshot = null) {
   if (!job?.id || !model) return;
   const previous = state.history.find((record) => record.id === job.id) || {};
   const settings = state.preparedSettings || {};
   const record = {
     ...previous,
+    irSnapshot: previous.irSnapshot || irSnapshot,
     id: job.id,
     model,
     phase,
@@ -308,6 +323,7 @@ function renderHistory() {
           <button class="button primary compact" type="button" data-history-download="${escapeHtml(record.id)}" ${completed ? "" : "disabled"}>下载</button>
           <button class="button ghost compact" type="button" data-history-remove="${escapeHtml(record.id)}">移除记录</button>
         </div>
+        <div style="grid-column: 1 / -1; min-width: 0; overflow-wrap: anywhere">${irSnapshotMarkup(record.irSnapshot)}</div>
       </article>`;
   }).join("");
 }
@@ -768,6 +784,9 @@ async function pollJob(initialJob, model, phase) {
 
 async function createH3Job() {
   if (!state.brief?.id || !state.preparedSettings || !state.irVerified || state.busy) return;
+  // Capture before awaiting submission; later edits and historical refreshes must
+  // never replace this job's actual submitted brief with another task's prompt.
+  const submittedIr = snapshotIr(state.brief, state.preparedSettings);
   setBusy(true);
   state.abortController = new AbortController();
   $("#irReview").hidden = true;
@@ -788,7 +807,7 @@ async function createH3Job() {
       body: JSON.stringify(payload),
       signal: state.abortController.signal
     });
-    rememberJob(created, model, "h3");
+    rememberJob(created, model, "h3", submittedIr);
     state.h3Job = await pollJob(created, model, "h3");
     updatePipeline(state.preparedSettings.quality === "2K" ? "sr" : "", ["assets", "ir", "h3"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
     if (state.preparedSettings.quality === "2K") {
@@ -815,7 +834,7 @@ async function createSrJob(sourceJobId) {
     body: JSON.stringify({ model, source_job_id: sourceJobId }),
     signal: state.abortController.signal
   });
-  rememberJob(created, model, "sr");
+  rememberJob(created, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
   state.srJob = await pollJob(created, model, "sr");
   updatePipeline("", ["assets", "ir", "h3", "sr"]);
   await showCompletedVideo(state.srJob, "2K");
@@ -849,6 +868,7 @@ async function showCompletedVideo(job, quality) {
     Number.isFinite(cost) ? `USD $${cost.toFixed(4)}` : "",
     job.id
   ].filter(Boolean).join(" · ");
+  $("#resultIrPrompt").innerHTML = irSnapshotMarkup(state.history.find((record) => record.id === job.id)?.irSnapshot);
   $("#downloadVideo").dataset.filename = `${job.id || "freyr-minimax-h3"}-${quality.toLowerCase()}.mp4`;
   setDiagnostics({ h3_job: state.h3Job, sr_job: state.srJob });
 }
