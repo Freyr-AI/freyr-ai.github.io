@@ -7,7 +7,6 @@ const MAX_HISTORY_ITEMS = 50;
 const MAX_ASSETS = { image: 9, video: 3, audio: 3 };
 const MAX_TOTAL_ASSETS = 12;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
-const MAX_JSON_BODY_BYTES = 11 * 1024 * 1024;
 const H3_POLL_BASE_MS = 10_000;
 const SR_POLL_BASE_MS = 3_000;
 const JOB_TIMEOUT_MS = 40 * 60 * 1000;
@@ -594,15 +593,6 @@ function validateInput() {
   return "";
 }
 
-function fileToDataUri(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error(`无法读取 ${file.name}`));
-    reader.readAsDataURL(file);
-  });
-}
-
 async function sha256Hex(file) {
   const bytes = await file.arrayBuffer();
   const digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -680,16 +670,27 @@ async function uploadAsset(asset, index, total) {
     setStatus("正在复用参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
     return { ...asset, sha256 };
   }
-  setStatus("正在上传参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
-  const dataUri = await fileToDataUri(asset.file);
-  const body = JSON.stringify({ data: dataUri });
-  if (new Blob([body]).size > MAX_JSON_BODY_BYTES) {
-    throw new Error(`${asset.file.name} 编码后的上传请求超过 11 MB，请压缩素材后重试。`);
+
+  setStatus("正在检查参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
+  const assetUrl = `${API_V1_ROOT}/h3-ir/assets/${sha256}`;
+  const existing = await fetch(assetUrl, {
+    headers: authHeaders(),
+    signal: state.abortController.signal
+  });
+  if (existing.ok) {
+    state.uploadedAssets.set(asset.id, { sha256 });
+    setStatus("正在复用参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
+    return { ...asset, sha256 };
   }
-  await fetchJson(`${API_V1_ROOT}/h3-ir/assets/${sha256}`, {
+  if (existing.status !== 404) {
+    throw new ApiError(existing.status, await parseResponseBody(existing), existing.headers.get("Retry-After") || "");
+  }
+
+  setStatus("正在上传参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
+  await fetchJson(assetUrl, {
     method: "PUT",
-    headers: authHeaders({ json: true }),
-    body,
+    headers: { ...authHeaders(), "Content-Type": asset.file.type },
+    body: asset.file,
     signal: state.abortController.signal
   });
   state.uploadedAssets.set(asset.id, { sha256 });

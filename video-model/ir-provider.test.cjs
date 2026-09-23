@@ -42,6 +42,39 @@ test("persistent IR uses short requests and reuses the key after a lost POST res
   assert.equal(saved.size, 0);
 });
 
+test("asset upload reuses a server-side SHA after page state is lost", async () => {
+  const {ctx} = context();
+  vm.runInContext(`
+    sha256Hex = async () => 'a'.repeat(64);
+    setStatus = () => {}; authHeaders = () => ({Authorization:'Bearer test'});
+    state.abortController = {signal:{}};
+    globalThis.lookups = 0; globalThis.uploads = 0;
+    fetch = async () => ({ok:true,status:200});
+    fetchJson = async () => { uploads++; };
+    globalThis.asset = {id:'new-page-id',type:'image',number:1,
+      file:{name:'large.png',type:'image/png',arrayBuffer:async()=>new Uint8Array([1,2,3]).buffer}};`, ctx);
+  const result = await vm.runInContext('uploadAsset(asset, 0, 1)', ctx);
+  assert.equal(result.sha256.length, 64);
+  assert.equal(ctx.uploads, 0);
+});
+
+test("missing asset uploads the original binary file instead of base64 JSON", async () => {
+  const {ctx} = context();
+  vm.runInContext(`
+    sha256Hex = async () => 'b'.repeat(64);
+    setStatus = () => {}; authHeaders = () => ({Authorization:'Bearer test'});
+    state.abortController = {signal:{}};
+    globalThis.uploadOptions = null;
+    fetch = async () => ({ok:false,status:404,text:async()=>'{"detail":"not found"}',headers:{get:()=>''}});
+    fetchJson = async (url, options) => { uploadOptions = options; return {}; };
+    globalThis.asset = {id:'new-file',type:'image',number:1,
+      file:{name:'large.png',type:'image/png',arrayBuffer:async()=>new Uint8Array([4,5,6]).buffer}};`, ctx);
+  await vm.runInContext('uploadAsset(asset, 0, 1)', ctx);
+  assert.equal(ctx.uploadOptions.body, ctx.asset.file);
+  assert.equal(ctx.uploadOptions.headers['Content-Type'], 'image/png');
+  assert.equal(ctx.uploadOptions.headers.Authorization, 'Bearer test');
+});
+
 test("refresh recovery restores settings and asset mapping without creating another task", async () => {
   const {ctx, nodes} = context();
   const records = new Map();
