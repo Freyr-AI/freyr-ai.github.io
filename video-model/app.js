@@ -214,13 +214,13 @@ async function fetchPersistentIr(briefBody, signal) {
   }
 }
 
-async function irShortRequest(url, options, signal) {
+async function irShortRequest(url, options, signal, maxRetries = 3) {
     for (let attempt = 0; ; attempt++) {
       try {
         return await fetchJson(url, { ...options,
           signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) });
       } catch (error) {
-        if (signal?.aborted || attempt >= 3 ||
+        if (signal?.aborted || attempt >= maxRetries ||
             (error instanceof ApiError && error.status !== 429 && error.status < 500)) throw error;
         await delay(1500 * (attempt + 1), signal);
       }
@@ -228,14 +228,31 @@ async function irShortRequest(url, options, signal) {
 }
 
 async function pollPersistentIr(taskId, signal) {
-  const request = (url, options = {}) => irShortRequest(url, options, signal);
   const url = `${API_V1_ROOT}/h3-ir/tasks/${encodeURIComponent(taskId)}`;
   setDiagnostics({ phase: "ir", task_id: taskId });
   for (let poll = 0; poll < 1200; poll++) {
-    const task = await request(url, { headers: authHeaders() });
+    let task;
+    try {
+      // One bounded request per poll. Network/edge timeouts are recoverable
+      // because the durable task continues independently on the server.
+      task = await irShortRequest(url, { headers: authHeaders(), cache: "no-store" }, signal, 0);
+    } catch (error) {
+      const retryable = !(error instanceof ApiError) || error.status === 429 || error.status >= 500;
+      if (signal?.aborted || !retryable) throw error;
+      setStatus("IR 查询连接波动", `${taskId} · 后台任务仍在运行，正在自动恢复查询。`, 42);
+      await delay(3000, signal);
+      continue;
+    }
     if (task.status === "completed") {
-      const brief = await request(`${url}/result`, { headers: authHeaders() });
-      return brief;
+      try {
+        return await irShortRequest(`${url}/result`, { headers: authHeaders(), cache: "no-store" }, signal, 0);
+      } catch (error) {
+        const retryable = !(error instanceof ApiError) || error.status === 429 || error.status >= 500;
+        if (signal?.aborted || !retryable) throw error;
+        setStatus("IR 结果连接波动", `${taskId} · 结果已生成，正在自动重新获取。`, 48);
+        await delay(3000, signal);
+        continue;
+      }
     }
     if (task.status === "failed" || task.status === "expired") {
       const error = new Error(`IR任务 ${taskId} ${task.status}: ${task.error?.errors?.join("；") || task.error?.message || "结果已过期，请重新生成"}`);

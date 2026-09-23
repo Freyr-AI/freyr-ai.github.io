@@ -42,6 +42,24 @@ test("persistent IR uses short requests and reuses the key after a lost POST res
   assert.equal(saved.size, 0);
 });
 
+test("persistent IR polling survives a transient signal timeout", async () => {
+  const {ctx} = context();
+  Object.assign(ctx, {AbortSignal});
+  vm.runInContext(`authHeaders = () => ({Authorization:'Bearer test'});
+    delay = async () => {}; setDiagnostics = () => {};
+    globalThis.statusTitles = []; setStatus = title => statusTitles.push(title);
+    globalThis.calls = 0;
+    fetchJson = async url => {
+      calls++;
+      if (calls === 1) throw new Error('signal timed out');
+      if (url.endsWith('/result')) return {id:'irjob_test',ir:{prompt:'ready'}};
+      return {status:'completed'};
+    };`, ctx);
+  const result = await vm.runInContext(`pollPersistentIr('irjob_test')`, ctx);
+  assert.equal(result.id, 'irjob_test');
+  assert.ok(ctx.statusTitles.includes('IR 查询连接波动'));
+});
+
 test("asset upload reuses a server-side SHA after page state is lost", async () => {
   const {ctx} = context();
   vm.runInContext(`
