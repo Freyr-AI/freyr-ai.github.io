@@ -184,6 +184,132 @@ async function fetchJson(url, options = {}) {
   return body;
 }
 
+async function fetchPersistentIr(briefBody, signal) {
+  // Scope recovery to the exact request and credential, without storing either.
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(
+    JSON.stringify(authHeaders()) + "\n" + briefBody));
+  const recoveryKey = "freyr-ir-task-" + Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, "0")).join("");
+  let saved;
+  try { saved = JSON.parse(sessionStorage.getItem(recoveryKey) || "null"); } catch { saved = null; }
+  saved ||= { key: crypto.randomUUID(), id: null };
+  // Fail before submission if recovery storage is unavailable: do not risk an
+  // orphaned submission followed by a duplicate, newly billed task.
+  sessionStorage.setItem(recoveryKey, JSON.stringify(saved));
+  const request = (url, options = {}) => irShortRequest(url, options, signal);
+  if (!saved.id) {
+    const task = await request(`${API_V1_ROOT}/h3-ir/tasks`, { method: "POST",
+      headers: { ...authHeaders({ json: true }), "Idempotency-Key": saved.key }, body: briefBody });
+    saved.id = task.id;
+    sessionStorage.setItem(recoveryKey, JSON.stringify(saved));
+  }
+  await saveIrResume(saved.id);
+  try {
+    const brief = await pollPersistentIr(saved.id, signal);
+    sessionStorage.removeItem(recoveryKey);
+    return brief;
+  } catch (error) {
+    if (error.irTerminal || (error instanceof ApiError && error.status === 410)) {
+      sessionStorage.removeItem(recoveryKey);
+    }
+    throw error;
+  }
+}
+
+async function irShortRequest(url, options, signal) {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await fetchJson(url, { ...options,
+          signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) });
+      } catch (error) {
+        if (signal?.aborted || attempt >= 3 ||
+            (error instanceof ApiError && error.status !== 429 && error.status < 500)) throw error;
+        await delay(1500 * (attempt + 1), signal);
+      }
+    }
+}
+
+async function pollPersistentIr(taskId, signal) {
+  const request = (url, options = {}) => irShortRequest(url, options, signal);
+  const url = `${API_V1_ROOT}/h3-ir/tasks/${encodeURIComponent(taskId)}`;
+  setDiagnostics({ phase: "ir", task_id: taskId });
+  for (let poll = 0; poll < 1200; poll++) {
+    const task = await request(url, { headers: authHeaders() });
+    if (task.status === "completed") {
+      const brief = await request(`${url}/result`, { headers: authHeaders() });
+      return brief;
+    }
+    if (task.status === "failed" || task.status === "expired") {
+      const error = new Error(`IR任务 ${taskId} ${task.status}: ${task.error?.errors?.join("；") || task.error?.message || "结果已过期，请重新生成"}`);
+      error.irTerminal = true;
+      throw error;
+    }
+    setStatus(task.status === "queued" ? "IR 任务排队中" : "IR 任务处理中",
+      `${taskId} · 任务已持久化；停止等待不会取消后台处理。`, 42);
+    await delay(3000, signal);
+  }
+  throw new Error(`已停止等待 IR 任务 ${taskId}；后台任务保留，可点击“恢复 IR 任务”继续查询。`);
+}
+
+const IR_RESUME_STORAGE_KEY = "freyr-ir-resume-v1";
+
+async function irCredentialDigest() {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(authHeaders())));
+  return Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, "0")).join("");
+}
+
+function loadIrResume() {
+  try {
+    const record = JSON.parse(localStorage.getItem(IR_RESUME_STORAGE_KEY) || "null");
+    if (!record || !/^irjob_[a-f0-9]{32}$/.test(record.id) || !Array.isArray(record.assets) ||
+        !record.settings || !Number.isFinite(record.savedAt)) return null;
+    return record;
+  } catch { return null; }
+}
+
+function renderIrResume() {
+  const record = loadIrResume();
+  $("#irResumePanel").hidden = !record;
+  $("#irResumeId").textContent = record?.id || "";
+}
+
+async function saveIrResume(taskId) {
+  const record = { id: taskId, credentialDigest: await irCredentialDigest(), savedAt: Date.now(),
+    settings: state.preparedSettings,
+    assets: state.preparedAssets.map(asset => ({type: asset.type, sha256: asset.sha256,
+      file: {name: asset.file.name}})) };
+  localStorage.setItem(IR_RESUME_STORAGE_KEY, JSON.stringify(record));
+  renderIrResume();
+}
+
+async function resumeIrTask() {
+  if (state.busy) return;
+  const record = loadIrResume();
+  if (!record) return;
+  const controller = new AbortController();
+  state.abortController = controller;
+  setBusy(true);
+  try {
+    if (record.credentialDigest !== await irCredentialDigest()) {
+      throw new Error("请使用提交该 IR 任务时的相同鉴权配置，再恢复查询。");
+    }
+    state.preparedSettings = record.settings;
+    state.preparedAssets = record.assets;
+    state.brief = null;
+    state.irVerified = false;
+    $("#irReview").hidden = true;
+    updatePipeline("ir", ["assets"], record.settings.quality === "2K" ? [] : ["sr"]);
+    state.brief = await pollPersistentIr(record.id, controller.signal);
+    updatePipeline("", ["assets", "ir"], record.settings.quality === "2K" ? [] : ["sr"]);
+    renderIrReview(state.brief);
+    setStatus("IR 任务已恢复", "请核对原任务的提示词与素材映射后再提交视频。", 50, "success");
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    setStatus("IR 恢复失败", friendlyError(error), 0, "error");
+  } finally {
+    if (state.abortController === controller) setBusy(false);
+  }
+}
+
 async function fetchEventStreamResult(url, options = {}) {
   const response = await fetch(url, options);
   if (!response.ok) {
@@ -688,16 +814,7 @@ async function prepareIr() {
       ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
     };
     const briefBody = JSON.stringify(briefPayload);
-    state.brief = await fetchEventStreamResult(`${API_V1_ROOT}/h3-ir/briefs`, {
-      method: "POST",
-      headers: {
-        ...authHeaders({ json: true }),
-        Accept: "text/event-stream",
-        "X-Pass-Accept": "text/event-stream"
-      },
-      body: briefBody,
-      signal: state.abortController.signal
-    });
+    state.brief = await fetchPersistentIr(briefBody, state.abortController.signal);
     updatePipeline("", ["assets", "ir"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
     setStatus("IR 方案已生成", "请核对素材标签、类型与 SHA-256，确认后再提交 H3。", 50, "success");
     renderIrReview(state.brief);
@@ -921,6 +1038,12 @@ function bindSegmentedControl(name, inputSelector) {
 }
 
 function bindEvents() {
+  renderIrResume();
+  $("#resumeIrTask").addEventListener("click", resumeIrTask);
+  $("#forgetIrTask").addEventListener("click", () => {
+    localStorage.removeItem(IR_RESUME_STORAGE_KEY);
+    renderIrResume();
+  });
   $("#authHeaders").value = state.headerText;
   updateAuthState();
   $("#authToggle").addEventListener("click", () => {

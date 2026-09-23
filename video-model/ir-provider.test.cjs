@@ -17,6 +17,65 @@ function context() {
   return {ctx, nodes};
 }
 
+test("persistent IR uses short requests and reuses the key after a lost POST response", async () => {
+  const {ctx} = context();
+  const saved = new Map();
+  Object.assign(ctx, {crypto: require('node:crypto').webcrypto, TextEncoder, AbortSignal,
+    sessionStorage: {getItem: key => saved.get(key) || null,
+      setItem: (key, value) => saved.set(key, value), removeItem: key => saved.delete(key)}});
+  vm.runInContext(`authHeaders = () => ({Authorization:'Bearer test'});
+    delay = async () => {}; setDiagnostics = () => {}; setStatus = () => {};
+    globalThis.keys = [];
+    fetchJson = async (url, options) => {
+      if (options.method === 'POST') keys.push(options.headers['Idempotency-Key']);
+      throw new Error('network lost');
+    };`, ctx);
+  await assert.rejects(vm.runInContext(`fetchPersistentIr('{"intent":"same"}')`, ctx), /network lost/);
+  assert.equal(saved.size, 1);
+  vm.runInContext(`fetchJson = async (url, options) => {
+    if (options.method === 'POST') { keys.push(options.headers['Idempotency-Key']); return {id:'irjob_test'}; }
+    return url.endsWith('/result') ? {id:'irjob_test',ir:{prompt:'ready'}} : {status:'completed'};
+  };`, ctx);
+  const result = await vm.runInContext(`fetchPersistentIr('{"intent":"same"}')`, ctx);
+  assert.equal(result.id, 'irjob_test');
+  assert.equal(new Set(ctx.keys).size, 1);
+  assert.equal(saved.size, 0);
+});
+
+test("refresh recovery restores settings and asset mapping without creating another task", async () => {
+  const {ctx, nodes} = context();
+  const records = new Map();
+  Object.assign(ctx, {crypto: require('node:crypto').webcrypto, TextEncoder, AbortSignal, AbortController,
+    localStorage: {getItem: key => records.get(key) || null,
+      setItem: (key, value) => records.set(key, value), removeItem: key => records.delete(key)}});
+  vm.runInContext(`authHeaders = () => ({Authorization:'Bearer secret-not-to-persist'});
+    setStatus = () => {}; updatePipeline = () => {};
+    state.preparedSettings = {irProvider:'H3Offical-IR', model:'MiniMax/MiniMax-H3-SH2',seconds:13,quality:'768P'};`, ctx);
+  await vm.runInContext(`saveIrResume('irjob_' + 'a'.repeat(32))`, ctx);
+  assert.equal(nodes.get('#irResumePanel').hidden, false);
+  assert.doesNotMatch([...records.values()].join(''), /secret-not-to-persist/);
+  vm.runInContext(`state.preparedSettings = null; state.preparedAssets = [];
+    pollPersistentIr = async id => ({id,provider:'H3Offical-IR',validation:{passed:true},
+      ir:{manifest:[{kind:'image',sha256:'a',label:'<Picture 1>'}]}});`, ctx);
+  await vm.runInContext('resumeIrTask()', ctx);
+  assert.equal(vm.runInContext('state.preparedSettings.seconds', ctx), 13);
+  assert.equal(vm.runInContext('state.preparedAssets[0].sha256', ctx), 'a');
+  assert.equal(vm.runInContext('state.irVerified', ctx), true);
+});
+
+test("recovery refuses a different credential before polling", async () => {
+  const {ctx} = context();
+  const record = {id:'irjob_'+'a'.repeat(32),credentialDigest:'different',savedAt:Date.now(),assets:[],settings:{}};
+  Object.assign(ctx, {crypto: require('node:crypto').webcrypto, TextEncoder, AbortController,
+    localStorage: {getItem: () => JSON.stringify(record)}});
+  vm.runInContext(`authHeaders = () => ({Authorization:'Bearer other'});
+    globalThis.polls=0; pollPersistentIr=async()=>{polls++;};
+    setStatus=(title,message)=>{globalThis.message=message;};`, ctx);
+  await vm.runInContext('resumeIrTask()', ctx);
+  assert.equal(ctx.polls, 0);
+  assert.match(ctx.message, /相同鉴权/);
+});
+
 test("new provider requires validated result and exact manifest", () => {
   const {ctx, nodes} = context();
   vm.runInContext(`state.brief = {id:'h3official_test', provider:'H3Offical-IR',validation:{passed:true},

@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=20260923-audio-optional-r1"></script>
+    <script defer src="app.js?v=20260923-ir-async-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -161,6 +161,15 @@
           </div>
           <button class="button ghost compact" id="resetTask" type="button">新建任务</button>
         </div>
+
+        <section class="ir-review" id="irResumePanel" hidden aria-label="恢复持久化 IR 任务">
+          <strong>上次的 IR 任务</strong>
+          <p id="irResumeId" style="overflow-wrap: anywhere"></p>
+          <p>关闭页面不会取消后台任务。使用相同鉴权配置可恢复查询，无需重新上传素材。
+            本机仅新增保存任务 ID、素材名称与摘要及生成设置，不保存素材文件。结果有效期为提交后 48 小时。</p>
+          <button class="button ghost compact" id="resumeIrTask" type="button">恢复 IR 任务</button>
+          <button class="button ghost compact" id="forgetIrTask" type="button">清除本机记录（不取消任务）</button>
+        </section>
 
         <div class="empty-state" id="emptyState">
           <div class="empty-visual" aria-hidden="true">
