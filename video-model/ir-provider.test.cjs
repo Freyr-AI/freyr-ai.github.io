@@ -215,3 +215,49 @@ test("prompt HTML is escaped and missing history is explicit", () => {
   assert.match(html, /&lt;script&gt;/);
   assert.match(vm.runInContext('irSnapshotMarkup(null)', ctx), /未保存/);
 });
+
+test("history can reuse a saved brief directly without running IR again", async () => {
+  const {ctx} = context();
+  Object.assign(ctx, {AbortController});
+  vm.runInContext(`
+    authIsComplete = () => true;
+    authHeaders = () => ({Authorization:'Bearer test'});
+    setBusy = value => { state.busy = value; };
+    updatePipeline = () => {}; setStatus = () => {}; setHistoryMessage = () => {};
+    setDiagnostics = () => {}; setCancelVisible = () => {}; rememberJob = () => {};
+    pollJob = async created => ({...created,status:'completed'});
+    showCompletedVideo = async () => {};
+    globalThis.posted = null;
+    fetchJson = async (url, options) => {
+      posted = JSON.parse(options.body);
+      return {id:'vid_reused',status:'queued'};
+    };
+    globalThis.record = {id:'vid_source',phase:'h3',model:'MiniMax/MiniMax-H3-SH2',
+      seconds:13,ratio:'16:9',irSnapshot:{briefId:'irjob_saved',provider:'H3Offical-IR',prompt:'saved'}};
+    globalThis.button = {disabled:false};
+  `, ctx);
+  await vm.runInContext("reuseHistoryIr(record, button)", ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.posted)), {
+    model:"MiniMax/MiniMax-H3-SH2", brief_id:"irjob_saved"
+  });
+  assert.equal(vm.runInContext("state.preparedSettings.seed", ctx), null);
+  assert.equal(vm.runInContext("state.brief.id", ctx), "irjob_saved");
+  assert.equal(ctx.button.disabled, false);
+});
+
+test("history only shows reuse for H3 records with a saved brief", () => {
+  const {ctx, nodes} = context();
+  vm.runInContext(`
+    state.history = [
+      {id:'h3',phase:'h3',model:'MiniMax/MiniMax-H3-SH2',status:'completed',
+        irSnapshot:{briefId:'irjob_saved',prompt:'saved'}},
+      {id:'legacy',phase:'h3',model:'MiniMax/MiniMax-H3-SH2',status:'completed'},
+      {id:'sr',phase:'sr',model:'FreyrAI/SR-D3-2K',status:'completed',
+        irSnapshot:{briefId:'irjob_saved',prompt:'saved'}}
+    ];
+    renderHistory();
+  `, ctx);
+  const html = nodes.get("#historyList").innerHTML;
+  assert.equal((html.match(/data-history-reuse-ir=/g) || []).length, 1);
+  assert.match(html, /data-history-reuse-ir="h3"/);
+});

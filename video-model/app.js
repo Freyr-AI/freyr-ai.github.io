@@ -460,6 +460,9 @@ function renderHistory() {
   }
   list.innerHTML = state.history.map((record) => {
     const completed = String(record.status).toLowerCase() === "completed";
+    const canReuseIr = record.phase === "h3"
+      && String(record.model || "").startsWith("MiniMax/MiniMax-H3-")
+      && Boolean(record.irSnapshot?.briefId);
     const details = [
       record.quality,
       record.ratio,
@@ -475,6 +478,7 @@ function renderHistory() {
         </div>
         <span class="history-status">${escapeHtml(historyStatusLabel(record.status))}</span>
         <div class="history-actions">
+          ${canReuseIr ? `<button class="button primary compact" type="button" data-history-reuse-ir="${escapeHtml(record.id)}">复用 IR 生成 H3</button>` : ""}
           <button class="button ghost compact" type="button" data-history-refresh="${escapeHtml(record.id)}">刷新状态</button>
           <button class="button primary compact" type="button" data-history-download="${escapeHtml(record.id)}" ${completed ? "" : "disabled"}>下载</button>
           <button class="button ghost compact" type="button" data-history-remove="${escapeHtml(record.id)}">移除记录</button>
@@ -482,6 +486,69 @@ function renderHistory() {
         <div style="grid-column: 1 / -1; min-width: 0; overflow-wrap: anywhere">${irSnapshotMarkup(record.irSnapshot)}</div>
       </article>`;
   }).join("");
+}
+
+async function reuseHistoryIr(record, button) {
+  const briefId = record?.irSnapshot?.briefId;
+  const model = record?.model;
+  if (state.busy || record?.phase !== "h3" || !briefId
+    || !String(model || "").startsWith("MiniMax/MiniMax-H3-")) return;
+  if (!authIsComplete()) {
+    setHistoryMessage("请先配置与原 IR 任务相同的 Request headers。", true);
+    $("#authPanel").hidden = false;
+    $("#authToggle").setAttribute("aria-expanded", "true");
+    return;
+  }
+
+  button.disabled = true;
+  setBusy(true);
+  state.abortController = new AbortController();
+  state.preparedSettings = {
+    irProvider: record.irSnapshot.provider || "OpenH3-IR",
+    model,
+    seconds: record.seconds ?? null,
+    ratio: record.ratio || "",
+    quality: "768P",
+    seed: null
+  };
+  state.brief = {
+    id: briefId,
+    provider: record.irSnapshot.provider,
+    ir: { prompt: record.irSnapshot.prompt || "" }
+  };
+  state.irVerified = true;
+  state.currentJob = null;
+  state.h3Job = null;
+  state.srJob = null;
+  $("#irReview").hidden = true;
+  $("#resultCard").hidden = true;
+  updatePipeline("h3", ["assets", "ir"], ["sr"]);
+  setStatus("正在复用历史 IR", `跳过 IR，使用 ${briefId} 创建新的 H3 任务。`, 51);
+  setHistoryMessage(`${record.id}：正在复用 IR 创建新的 H3 任务…`);
+
+  try {
+    const created = await fetchJson(`${API_V1_ROOT}/videos`, {
+      method: "POST",
+      headers: authHeaders({ json: true }),
+      body: JSON.stringify({ model, brief_id: briefId }),
+      signal: state.abortController.signal
+    });
+    rememberJob(created, model, "h3", record.irSnapshot);
+    setHistoryMessage(`${created.id}：已复用 ${briefId}，H3 任务已创建。`);
+    state.h3Job = await pollJob(created, model, "h3");
+    updatePipeline("", ["assets", "ir", "h3"], ["sr"]);
+    await showCompletedVideo(state.h3Job, "768P");
+  } catch (error) {
+    if (error?.name === "AbortError" && !state.abortController) return;
+    const detail = friendlyError(error);
+    setStatus("复用历史 IR 失败", detail, 0, "error");
+    setHistoryMessage(`${record.id}：${detail}`, true);
+    setDiagnostics({ phase: "reuse_ir", source_job_id: record.id, brief_id: briefId, error: detail });
+  } finally {
+    setBusy(false);
+    setCancelVisible(false);
+    button.disabled = false;
+  }
 }
 
 async function refreshHistoryJob(record, button) {
@@ -1149,12 +1216,15 @@ function bindEvents() {
     renderHistory();
   });
   $("#historyList").addEventListener("click", (event) => {
+    const reuseIr = event.target.closest("[data-history-reuse-ir]");
     const refresh = event.target.closest("[data-history-refresh]");
     const download = event.target.closest("[data-history-download]");
     const remove = event.target.closest("[data-history-remove]");
-    const id = refresh?.dataset.historyRefresh || download?.dataset.historyDownload || remove?.dataset.historyRemove;
+    const id = reuseIr?.dataset.historyReuseIr || refresh?.dataset.historyRefresh
+      || download?.dataset.historyDownload || remove?.dataset.historyRemove;
     if (!id) return;
     const record = state.history.find((item) => item.id === id);
+    if (reuseIr) reuseHistoryIr(record, reuseIr);
     if (refresh) refreshHistoryJob(record, refresh);
     if (download) downloadHistoryJob(record, download);
     if (remove) {
