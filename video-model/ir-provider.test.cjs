@@ -44,7 +44,7 @@ test("persistent IR uses short requests and reuses the key after a lost POST res
 
 test("persistent IR polling survives a transient signal timeout", async () => {
   const {ctx} = context();
-  Object.assign(ctx, {AbortSignal});
+  Object.assign(ctx, {AbortSignal, AbortController});
   vm.runInContext(`authHeaders = () => ({Authorization:'Bearer test'});
     delay = async () => {}; setDiagnostics = () => {};
     globalThis.statusTitles = []; setStatus = title => statusTitles.push(title);
@@ -62,10 +62,11 @@ test("persistent IR polling survives a transient signal timeout", async () => {
 
 test("asset upload reuses a server-side SHA after page state is lost", async () => {
   const {ctx} = context();
+  Object.assign(ctx, {AbortSignal, AbortController});
   vm.runInContext(`
     sha256Hex = async () => 'a'.repeat(64);
     setStatus = () => {}; authHeaders = () => ({Authorization:'Bearer test'});
-    state.abortController = {signal:{}};
+    state.abortController = {signal:new AbortController().signal};
     globalThis.lookups = 0; globalThis.uploads = 0;
     fetch = async () => ({ok:true,status:200});
     fetchJson = async () => { uploads++; };
@@ -82,15 +83,34 @@ test("missing asset uploads the original binary file instead of base64 JSON", as
     sha256Hex = async () => 'b'.repeat(64);
     setStatus = () => {}; authHeaders = () => ({Authorization:'Bearer test'});
     state.abortController = {signal:{}};
-    globalThis.uploadOptions = null;
+    globalThis.uploadOptions = null; globalThis.fetchCalls = 0;
     fetch = async () => ({ok:false,status:404,text:async()=>'{"detail":"not found"}',headers:{get:()=>''}});
-    fetchJson = async (url, options) => { uploadOptions = options; return {}; };
+    assetRequest = async (url, options) => {
+      fetchCalls++;
+      if (options.method === 'PUT') { uploadOptions = options; return {ok:true,status:201}; }
+      return {ok:false,status:404,text:async()=>'{"detail":"not found"}',headers:{get:()=>''}};
+    };
     globalThis.asset = {id:'new-file',type:'image',number:1,
       file:{name:'large.png',type:'image/png',arrayBuffer:async()=>new Uint8Array([4,5,6]).buffer}};`, ctx);
   await vm.runInContext('uploadAsset(asset, 0, 1)', ctx);
   assert.equal(ctx.uploadOptions.body, ctx.asset.file);
   assert.equal(ctx.uploadOptions.headers['Content-Type'], 'image/png');
   assert.equal(ctx.uploadOptions.headers.Authorization, 'Bearer test');
+});
+
+test("asset requests retry transient upstream connection failures", async () => {
+  const {ctx} = context();
+  Object.assign(ctx, {AbortSignal});
+  vm.runInContext(`delay = async () => {}; globalThis.calls = 0;
+    fetch = async () => {
+      calls++;
+      if (calls === 1) return {ok:false,status:500};
+      if (calls === 2) throw new Error('temporary connect failure');
+      return {ok:true,status:200};
+    };`, ctx);
+  const response = await vm.runInContext(`assetRequest('/asset', {}, undefined)`, ctx);
+  assert.equal(response.status, 200);
+  assert.equal(ctx.calls, 3);
 });
 
 test("refresh recovery restores settings and asset mapping without creating another task", async () => {

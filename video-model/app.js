@@ -227,6 +227,20 @@ async function irShortRequest(url, options, signal, maxRetries = 3) {
     }
 }
 
+async function assetRequest(url, options, signal, maxRetries = 3) {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const response = await fetch(url, { ...options,
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30000)]) : AbortSignal.timeout(30000) });
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt >= maxRetries) return response;
+    } catch (error) {
+      if (signal?.aborted || attempt >= maxRetries) throw error;
+    }
+    await delay(1500 * (attempt + 1), signal);
+  }
+}
+
 async function pollPersistentIr(taskId, signal) {
   const url = `${API_V1_ROOT}/h3-ir/tasks/${encodeURIComponent(taskId)}`;
   setDiagnostics({ phase: "ir", task_id: taskId });
@@ -690,10 +704,8 @@ async function uploadAsset(asset, index, total) {
 
   setStatus("正在检查参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
   const assetUrl = `${API_V1_ROOT}/h3-ir/assets/${sha256}`;
-  const existing = await fetch(assetUrl, {
-    headers: authHeaders(),
-    signal: state.abortController.signal
-  });
+  const existing = await assetRequest(assetUrl, { headers: authHeaders(), cache: "no-store" },
+    state.abortController.signal);
   if (existing.ok) {
     state.uploadedAssets.set(asset.id, { sha256 });
     setStatus("正在复用参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
@@ -704,12 +716,14 @@ async function uploadAsset(asset, index, total) {
   }
 
   setStatus("正在上传参考素材", `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`, (index / total) * 35);
-  await fetchJson(assetUrl, {
+  const uploaded = await assetRequest(assetUrl, {
     method: "PUT",
     headers: { ...authHeaders(), "Content-Type": asset.file.type },
-    body: asset.file,
-    signal: state.abortController.signal
-  });
+    body: asset.file
+  }, state.abortController.signal);
+  if (!uploaded.ok) {
+    throw new ApiError(uploaded.status, await parseResponseBody(uploaded), uploaded.headers.get("Retry-After") || "");
+  }
   state.uploadedAssets.set(asset.id, { sha256 });
   return { ...asset, sha256 };
 }
