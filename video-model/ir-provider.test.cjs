@@ -318,4 +318,5 @@ test("direct prompt mode updates labels and hides the IR provider", () => {
   assert.equal(nodes.get("#prepareButtonText").textContent, "直接生成 H3 视频");
   assert.equal(nodes.get("#intentInput").maxLength, 30000);
   assert.match(nodes.get("#assetHelp").textContent, /<Picture N>/);
+  assert.match(nodes.get("#assetLimitHelp").textContent, /60 MiB/);
 });

@@ -7,8 +7,8 @@ const MAX_HISTORY_ITEMS = 50;
 const MAX_ASSETS = { image: 9, video: 3, audio: 3 };
 const MAX_TOTAL_ASSETS = 15;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
-const MAX_DIRECT_RAW_BYTES = 47 * 1024 * 1024;
-const MAX_DIRECT_JSON_BYTES = 64 * 1024 * 1024;
+const MAX_DIRECT_RAW_BYTES = 60 * 1024 * 1024;
+const MAX_DIRECT_JSON_BYTES = 88 * 1024 * 1024;
 const IR_INTENT_MAX_CHARS = 7000;
 const DIRECT_PROMPT_MAX_CHARS = 30000;
 const H3_POLL_BASE_MS = 10_000;
@@ -710,7 +710,7 @@ function validateInput() {
   if (state.assets.length > MAX_TOTAL_ASSETS) return `参考素材合计不能超过 ${MAX_TOTAL_ASSETS} 项。`;
   const totalBytes = state.assets.reduce((sum, asset) => sum + asset.file.size, 0);
   if (direct && totalBytes > MAX_DIRECT_RAW_BYTES) {
-    return "自定义 IR 模式通过浏览器 Base64 直传，原始素材合计不能超过 47 MiB。";
+    return "自定义 IR 模式通过浏览器 Base64 直传，原始素材合计不能超过 60 MiB。";
   }
   if (totalBytes > MAX_TOTAL_BYTES) return "IR 引用的原始素材合计不能超过 60 MiB。";
   const unsupported = direct && state.assets.find((asset) => ![
@@ -760,7 +760,7 @@ function syncPromptSourceUi() {
     ? "图片、视频、音频分别按页面顺序对应 <Picture N>、<Video N>、<Audio N>"
     : "同类素材按页面顺序编号，并由 IR 生成最终提示词";
   $("#assetLimitHelp").textContent = direct
-    ? "图片最多 9 张，视频和音频各 3 个；浏览器直传素材合计不超过 47 MiB"
+    ? "图片最多 9 张，视频和音频各 3 个；浏览器直传素材合计不超过 60 MiB"
     : "图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB";
   $("#promptSourceHelp").textContent = direct
     ? "跳过 IR 服务，按当前 Prompt 和素材顺序直接创建 H3 任务。"
@@ -1170,7 +1170,7 @@ async function createDirectH3Job() {
     };
     const body = JSON.stringify(payload);
     if (new Blob([body]).size > MAX_DIRECT_JSON_BYTES) {
-      throw new Error("Base64 编码后的请求超过 64 MiB，请压缩或减少参考素材。 ");
+      throw new Error("Base64 编码后的请求超过 88 MiB，请压缩或减少参考素材。 ");
     }
     const created = await fetchJson(`${API_V1_ROOT}/videos`, {
       method: "POST",
