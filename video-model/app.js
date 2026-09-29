@@ -5,8 +5,12 @@ const HEADERS_STORAGE_KEY = "freyrModelListHeaders";
 const HISTORY_STORAGE_KEY = "freyrVideoModelHistoryV1";
 const MAX_HISTORY_ITEMS = 50;
 const MAX_ASSETS = { image: 9, video: 3, audio: 3 };
-const MAX_TOTAL_ASSETS = 12;
+const MAX_TOTAL_ASSETS = 15;
 const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
+const MAX_DIRECT_RAW_BYTES = 47 * 1024 * 1024;
+const MAX_DIRECT_JSON_BYTES = 64 * 1024 * 1024;
+const IR_INTENT_MAX_CHARS = 7000;
+const DIRECT_PROMPT_MAX_CHARS = 30000;
 const H3_POLL_BASE_MS = 10_000;
 const SR_POLL_BASE_MS = 3_000;
 const JOB_TIMEOUT_MS = 40 * 60 * 1000;
@@ -21,6 +25,7 @@ const ALLOWED_MIME = {
   "video/webm": "video",
   "audio/mpeg": "audio",
   "audio/wav": "audio",
+  "audio/x-wav": "audio",
   "audio/mp4": "audio",
   "audio/x-m4a": "audio"
 };
@@ -298,7 +303,7 @@ function loadIrResume() {
 
 function renderIrResume() {
   const record = loadIrResume();
-  $("#irResumePanel").hidden = !record;
+  $("#irResumePanel").hidden = $("#promptSourceInput")?.value === "direct" || !record;
   $("#irResumeId").textContent = record?.id || "";
 }
 
@@ -319,6 +324,10 @@ async function resumeIrTask() {
   state.abortController = controller;
   setBusy(true);
   try {
+    $("#promptSourceInput").value = "ir";
+    $$('[data-control="prompt-source"] button').forEach((button) =>
+      button.classList.toggle("active", button.dataset.value === "ir"));
+    syncPromptSourceUi();
     if (record.credentialDigest !== await irCredentialDigest()) {
       throw new Error("请使用提交该 IR 任务时的相同鉴权配置，再恢复查询。");
     }
@@ -406,14 +415,22 @@ function persistHistory() {
 function snapshotIr(brief, settings) {
   const prompt = brief?.ir?.prompt || brief?.ir?.final_prompt || brief?.final_prompt || brief?.prompt;
   return typeof prompt === "string" && prompt ? {
-    prompt, briefId: brief.id, provider: brief.provider || settings?.irProvider || "OpenH3-IR"
+    prompt, briefId: brief.id, provider: brief.provider || settings?.irProvider || "OpenH3-IR",
+    inputMode: "ir_brief"
+  } : null;
+}
+
+function snapshotDirectPrompt(prompt) {
+  return typeof prompt === "string" && prompt ? {
+    prompt, briefId: "", provider: "自定义 IR", inputMode: "direct"
   } : null;
 }
 
 function irSnapshotMarkup(snapshot) {
   if (!snapshot?.prompt) return '<small>此任务未保存 IR prompt（旧记录无法自动补回）。</small>';
+  const identity = [snapshot.provider, snapshot.briefId].filter(Boolean).join(" · ");
   return `<details class="final-prompt"><summary>查看本次使用的 IR prompt</summary>
-    <small>${escapeHtml(snapshot.provider)} · ${escapeHtml(snapshot.briefId)}</small>
+    <small>${escapeHtml(identity)}</small>
     <p>${escapeHtml(snapshot.prompt)}</p></details>`;
 }
 
@@ -462,6 +479,7 @@ function renderHistory() {
     const completed = String(record.status).toLowerCase() === "completed";
     const canReuseIr = record.phase === "h3"
       && String(record.model || "").startsWith("MiniMax/MiniMax-H3-")
+      && record.irSnapshot?.inputMode !== "direct"
       && Boolean(record.irSnapshot?.briefId);
     const details = [
       record.quality,
@@ -679,16 +697,37 @@ function moveAsset(id, direction) {
 }
 
 function validateInput() {
-  if ($("#irProvider").value === "H3Offical-IR" && $("#ratioInput").value === "adaptive") {
+  const direct = $("#promptSourceInput").value === "direct";
+  const prompt = $("#intentInput").value.trim();
+  const promptLimit = direct ? DIRECT_PROMPT_MAX_CHARS : IR_INTENT_MAX_CHARS;
+  if (!direct && $("#irProvider").value === "H3Offical-IR" && $("#ratioInput").value === "adaptive") {
     return "H3Offical-IR 请明确选择画面比例（如 16:9 或 9:16），暂不支持自动比例。";
   }
   if (!authIsComplete()) return "请先配置 Authorization 和两项 Cloudflare Access headers。";
-  if (!$("#intentInput").value.trim()) return "请填写创作意图。";
+  if (!prompt) return direct ? "请输入完整的自定义 IR Prompt。" : "请填写创作意图。";
+  if (prompt.length > promptLimit) return `Prompt 不能超过 ${promptLimit} 个字符。`;
   if (!state.assets.length) return "请至少上传一项参考素材。";
   if (state.assets.length > MAX_TOTAL_ASSETS) return `参考素材合计不能超过 ${MAX_TOTAL_ASSETS} 项。`;
   const totalBytes = state.assets.reduce((sum, asset) => sum + asset.file.size, 0);
+  if (direct && totalBytes > MAX_DIRECT_RAW_BYTES) {
+    return "自定义 IR 模式通过浏览器 Base64 直传，原始素材合计不能超过 47 MiB。";
+  }
   if (totalBytes > MAX_TOTAL_BYTES) return "IR 引用的原始素材合计不能超过 60 MiB。";
+  const unsupported = direct && state.assets.find((asset) => ![
+    "image/jpeg", "image/png", "image/webp", "video/mp4", "video/quicktime",
+    "audio/mpeg", "audio/wav", "audio/x-wav"
+  ].includes(asset.file.type));
+  if (unsupported) return `${unsupported.file.name}：自定义 IR 直传暂不支持此文件格式。`;
   return "";
+}
+
+function fileToDataUri(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error(`无法读取 ${file.name}`));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function sha256Hex(file) {
@@ -702,7 +741,35 @@ function setBusy(busy) {
   $("#prepareButton").disabled = busy;
   $("#confirmGenerate").disabled = busy || !state.brief?.id || !state.irVerified;
   $("#irProvider").disabled = busy;
+  $$('[data-control="prompt-source"] button').forEach((button) => { button.disabled = busy; });
   $("#rebuildIr").disabled = busy;
+}
+
+function syncPromptSourceUi() {
+  const direct = $("#promptSourceInput").value === "direct";
+  $("#irProviderFieldset").hidden = direct;
+  $("#promptKicker").textContent = direct ? "自定义 IR" : "创作意图";
+  $("#protocolBadge").textContent = direct ? "Direct H3" : "IR first";
+  $("#promptLabel").textContent = direct ? "输入完整的 H3 IR Prompt" : "描述希望生成的内容";
+  $("#intentInput").maxLength = direct ? DIRECT_PROMPT_MAX_CHARS : IR_INTENT_MAX_CHARS;
+  $("#intentInput").placeholder = direct
+    ? "请输入最终提示词，并使用 <Picture 1>、<Video 1>、<Audio 1> 等标签绑定下方同类型素材顺序。"
+    : "例如：保持人物身份一致，人物自然转身后向镜头走来；参考动作视频的节奏，使用音频中的对白，镜头平稳、电影感光影。";
+  $("#promptCount").textContent = `${$("#intentInput").value.length} / ${direct ? DIRECT_PROMPT_MAX_CHARS : IR_INTENT_MAX_CHARS}`;
+  $("#assetHelp").textContent = direct
+    ? "图片、视频、音频分别按页面顺序对应 <Picture N>、<Video N>、<Audio N>"
+    : "同类素材按页面顺序编号，并由 IR 生成最终提示词";
+  $("#assetLimitHelp").textContent = direct
+    ? "图片最多 9 张，视频和音频各 3 个；浏览器直传素材合计不超过 47 MiB"
+    : "图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB";
+  $("#promptSourceHelp").textContent = direct
+    ? "跳过 IR 服务，按当前 Prompt 和素材顺序直接创建 H3 任务。"
+    : "先生成 IR 方案，核对映射后再提交 H3。";
+  $("#prepareButtonText").textContent = direct ? "直接生成 H3 视频" : "生成 IR 方案";
+  $("#submitNote").textContent = direct
+    ? "不会调用 IR；请自行确认 Prompt 中的素材标签与下方顺序完全一致。"
+    : "先上传素材并生成 IR，核对素材映射后才会提交 H3 任务。";
+  renderIrResume();
 }
 
 function showTaskView() {
@@ -882,6 +949,7 @@ async function prepareIr() {
   setJobMeta(null);
   const seedValue = $("#seedInput").value.trim();
   state.preparedSettings = {
+    promptSource: "ir",
     irProvider: $("#irProvider").value,
     model: $("#modelSelect").value,
     seconds: Number($("#secondsInput").value),
@@ -1036,6 +1104,99 @@ async function createH3Job() {
   }
 }
 
+async function createDirectH3Job() {
+  const validationMessage = validateInput();
+  if (validationMessage) {
+    showFormMessage(validationMessage);
+    if (!authIsComplete()) {
+      $("#authPanel").hidden = false;
+      $("#authToggle").setAttribute("aria-expanded", "true");
+    }
+    return;
+  }
+  if (state.busy) return;
+
+  showFormMessage();
+  setBusy(true);
+  state.abortController = new AbortController();
+  state.brief = null;
+  state.preparedAssets = [];
+  state.currentJob = null;
+  state.h3Job = null;
+  state.srJob = null;
+  setJobMeta(null);
+  const seedValue = $("#seedInput").value.trim();
+  state.preparedSettings = {
+    promptSource: "direct",
+    irProvider: "自定义 IR",
+    model: $("#modelSelect").value,
+    seconds: Number($("#secondsInput").value),
+    ratio: $("#ratioInput").value || "16:9",
+    quality: state.desiredQuality,
+    seed: seedValue ? Number(seedValue) : null
+  };
+  const prompt = $("#intentInput").value.trim();
+  const submittedIr = snapshotDirectPrompt(prompt);
+  $("#irReview").hidden = true;
+  $("#resultCard").hidden = true;
+  updatePipeline("assets", [], ["ir", ...(state.desiredQuality === "2K" ? [] : ["sr"])]);
+  setStatus("正在读取参考素材", "素材只用于本次 H3 任务，不会调用 IR 服务。", 5);
+
+  try {
+    const assets = numberedAssets();
+    const conditions = [];
+    for (let index = 0; index < assets.length; index += 1) {
+      const asset = assets[index];
+      setStatus("正在准备 H3 素材",
+        `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`,
+        5 + ((index + 1) / assets.length) * 35);
+      conditions.push({
+        type: asset.type,
+        role: "reference",
+        uri: await fileToDataUri(asset.file)
+      });
+    }
+
+    updatePipeline("h3", ["assets"], ["ir", ...(state.preparedSettings.quality === "2K" ? [] : ["sr"])]);
+    setStatus("正在提交 H3 任务", "使用自定义 IR Prompt 和当前素材顺序创建视频任务。", 51);
+    const model = state.preparedSettings.model;
+    const payload = {
+      model,
+      prompt,
+      seconds: state.preparedSettings.seconds,
+      generation_config: { resolution: "768P", ratio: state.preparedSettings.ratio },
+      conditions,
+      ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
+    };
+    const body = JSON.stringify(payload);
+    if (new Blob([body]).size > MAX_DIRECT_JSON_BYTES) {
+      throw new Error("Base64 编码后的请求超过 64 MiB，请压缩或减少参考素材。 ");
+    }
+    const created = await fetchJson(`${API_V1_ROOT}/videos`, {
+      method: "POST",
+      headers: authHeaders({ json: true }),
+      body,
+      signal: state.abortController.signal
+    });
+    rememberJob(created, model, "h3", submittedIr);
+    state.h3Job = await pollJob(created, model, "h3");
+    updatePipeline(state.preparedSettings.quality === "2K" ? "sr" : "",
+      ["assets", "h3"], ["ir", ...(state.preparedSettings.quality === "2K" ? [] : ["sr"])]);
+    if (state.preparedSettings.quality === "2K") {
+      await createSrJob(state.h3Job.id);
+    } else {
+      await showCompletedVideo(state.h3Job, "768P");
+    }
+  } catch (error) {
+    if (error?.name === "AbortError" && !state.abortController) return;
+    setStatus("视频任务失败", friendlyError(error), 0, "error");
+    setDiagnostics({ phase: "direct_h3", job: state.currentJob, error: friendlyError(error) });
+  } finally {
+    setBusy(false);
+    setCancelVisible(false);
+  }
+}
+
 async function createSrJob(sourceJobId) {
   const model = "FreyrAI/SR-D3-2K";
   setStatus("正在提交 2K 超分任务", "768P 视频已完成，正在创建独立的 Video SR 任务。", 76);
@@ -1047,7 +1208,8 @@ async function createSrJob(sourceJobId) {
   });
   rememberJob(created, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
   state.srJob = await pollJob(created, model, "sr");
-  updatePipeline("", ["assets", "ir", "h3", "sr"]);
+  const direct = state.preparedSettings?.promptSource === "direct";
+  updatePipeline("", direct ? ["assets", "h3", "sr"] : ["assets", "ir", "h3", "sr"], direct ? ["ir"] : []);
   await showCompletedVideo(state.srJob, "2K");
 }
 
@@ -1167,7 +1329,8 @@ function bindEvents() {
     updateAuthState();
   });
   $("#intentInput").addEventListener("input", () => {
-    $("#promptCount").textContent = `${$("#intentInput").value.length} / 7000`;
+    const limit = $("#promptSourceInput").value === "direct" ? DIRECT_PROMPT_MAX_CHARS : IR_INTENT_MAX_CHARS;
+    $("#promptCount").textContent = `${$("#intentInput").value.length} / ${limit}`;
   });
   $("#irProvider").addEventListener("change", () => {
     state.brief = null;
@@ -1201,9 +1364,19 @@ function bindEvents() {
   });
   bindSegmentedControl("quality", "#qualityInput");
   bindSegmentedControl("ratio", "#ratioInput");
+  bindSegmentedControl("prompt-source", "#promptSourceInput");
+  $$('[data-control="prompt-source"] button').forEach((button) => button.addEventListener("click", () => {
+    state.brief = null;
+    state.irVerified = false;
+    $("#irReview").hidden = true;
+    $("#confirmGenerate").disabled = true;
+    showFormMessage();
+    syncPromptSourceUi();
+  }));
   $("#generationForm").addEventListener("submit", (event) => {
     event.preventDefault();
-    prepareIr();
+    if ($("#promptSourceInput").value === "direct") createDirectH3Job();
+    else prepareIr();
   });
   $("#confirmGenerate").addEventListener("click", createH3Job);
   $("#rebuildIr").addEventListener("click", prepareIr);
@@ -1248,5 +1421,6 @@ function bindEvents() {
 }
 
 bindEvents();
+syncPromptSourceUi();
 renderAssets();
 renderHistory();

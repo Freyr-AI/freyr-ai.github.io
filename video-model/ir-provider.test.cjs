@@ -5,12 +5,18 @@ const vm = require("node:vm");
 
 function context() {
   const nodes = new Map();
-  const document = {querySelector(selector) {
-    if (!nodes.has(selector)) nodes.set(selector, {classList: {toggle() {}}, value: "", disabled: false});
-    return nodes.get(selector);
-  }};
+  const document = {
+    querySelector(selector) {
+      if (!nodes.has(selector)) nodes.set(selector, {classList: {toggle() {}}, value: "", disabled: false});
+      return nodes.get(selector);
+    },
+    querySelectorAll() { return []; }
+  };
   const ctx = vm.createContext({document, localStorage: {getItem() {return null;}, setItem() {}}, console});
-  const source = fs.readFileSync(`${__dirname}/app.js`, "utf8").replace(/bindEvents\(\);\s*renderAssets\(\);\s*renderHistory\(\);\s*$/, "");
+  const source = fs.readFileSync(`${__dirname}/app.js`, "utf8").replace(
+    /bindEvents\(\);\s*syncPromptSourceUi\(\);\s*renderAssets\(\);\s*renderHistory\(\);\s*$/,
+    ""
+  );
   vm.runInContext(source, ctx);
   vm.runInContext(`state.preparedAssets = [{type:'image',sha256:'a',file:{name:'test.png'}}];
     state.preparedSettings = {irProvider:'H3Offical-IR'};`, ctx);
@@ -253,11 +259,63 @@ test("history only shows reuse for H3 records with a saved brief", () => {
         irSnapshot:{briefId:'irjob_saved',prompt:'saved'}},
       {id:'legacy',phase:'h3',model:'MiniMax/MiniMax-H3-SH2',status:'completed'},
       {id:'sr',phase:'sr',model:'FreyrAI/SR-D3-2K',status:'completed',
-        irSnapshot:{briefId:'irjob_saved',prompt:'saved'}}
+        irSnapshot:{briefId:'irjob_saved',prompt:'saved'}},
+      {id:'direct',phase:'h3',model:'MiniMax/MiniMax-H3-SH2',status:'completed',
+        irSnapshot:{briefId:'',prompt:'custom',inputMode:'direct'}}
     ];
     renderHistory();
   `, ctx);
   const html = nodes.get("#historyList").innerHTML;
   assert.equal((html.match(/data-history-reuse-ir=/g) || []).length, 1);
   assert.match(html, /data-history-reuse-ir="h3"/);
+});
+
+test("direct prompt mode posts prompt and ordered conditions without calling IR", async () => {
+  const {ctx, nodes} = context();
+  Object.assign(ctx, {AbortController, Blob});
+  vm.runInContext(`
+    document.querySelector('#promptSourceInput').value = 'direct';
+    document.querySelector('#intentInput').value = 'Use <Picture 1> with <Audio 1>.';
+    document.querySelector('#modelSelect').value = 'MiniMax/MiniMax-H3-SH2';
+    document.querySelector('#secondsInput').value = '13';
+    document.querySelector('#ratioInput').value = '16:9';
+    document.querySelector('#seedInput').value = '';
+    state.assets = [
+      {id:'image',type:'image',file:{name:'person.jpg',type:'image/jpeg',size:10}},
+      {id:'audio',type:'audio',file:{name:'voice.mp3',type:'audio/mpeg',size:10}}
+    ];
+    authIsComplete = () => true;
+    authHeaders = () => ({Authorization:'Bearer test'});
+    fileToDataUri = async file => 'data:' + file.type + ';base64,AA==';
+    setBusy = value => { state.busy = value; };
+    showFormMessage = () => {}; setJobMeta = () => {}; updatePipeline = () => {};
+    setStatus = () => {}; setDiagnostics = () => {}; setCancelVisible = () => {};
+    rememberJob = () => {}; createSrJob = async () => {};
+    pollJob = async created => ({...created,status:'completed'});
+    showCompletedVideo = async () => {};
+    globalThis.irCalls = 0; fetchPersistentIr = async () => { irCalls++; };
+    globalThis.posted = null;
+    fetchJson = async (url, options) => {
+      posted = JSON.parse(options.body);
+      return {id:'vid_direct',status:'queued'};
+    };
+  `, ctx);
+  await vm.runInContext("createDirectH3Job()", ctx);
+  assert.equal(ctx.irCalls, 0);
+  assert.equal(ctx.posted.prompt, "Use <Picture 1> with <Audio 1>.");
+  assert.equal(ctx.posted.brief_id, undefined);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.posted.generation_config)), {
+    resolution:"768P", ratio:"16:9"
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.posted.conditions.map(item => item.type))), ["image", "audio"]);
+  assert.equal(ctx.posted.conditions[0].uri, "data:image/jpeg;base64,AA==");
+});
+
+test("direct prompt mode updates labels and hides the IR provider", () => {
+  const {ctx, nodes} = context();
+  vm.runInContext("document.querySelector('#promptSourceInput').value = 'direct'; renderIrResume = () => {}; syncPromptSourceUi()", ctx);
+  assert.equal(nodes.get("#irProviderFieldset").hidden, true);
+  assert.equal(nodes.get("#prepareButtonText").textContent, "直接生成 H3 视频");
+  assert.equal(nodes.get("#intentInput").maxLength, 30000);
+  assert.match(nodes.get("#assetHelp").textContent, /<Picture N>/);
 });

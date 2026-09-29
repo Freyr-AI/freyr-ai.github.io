@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=20260924-history-ir-reuse-r1"></script>
+    <script defer src="app.js?v=20260929-direct-ir-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -56,13 +56,13 @@
         <form id="generationForm">
           <div class="section-heading">
             <div>
-              <span class="kicker">创作意图</span>
+              <span class="kicker" id="promptKicker">创作意图</span>
               <h1 id="composerTitle">用参考素材生成视频</h1>
             </div>
-            <span class="protocol-badge">IR first</span>
+            <span class="protocol-badge" id="protocolBadge">IR first</span>
           </div>
 
-          <label class="field-label" for="intentInput">描述希望生成的内容</label>
+          <label class="field-label" id="promptLabel" for="intentInput">描述希望生成的内容</label>
           <div class="prompt-wrap">
             <textarea id="intentInput" rows="7" maxlength="7000" placeholder="例如：保持人物身份一致，人物自然转身后向镜头走来；参考动作视频的节奏，使用音频中的对白，镜头平稳、电影感光影。"></textarea>
             <span id="promptCount">0 / 7000</span>
@@ -71,7 +71,7 @@
           <div class="asset-heading">
             <div>
               <span class="field-label">参考素材</span>
-              <span class="asset-help">同类素材按页面顺序编号，并由 IR 生成最终提示词</span>
+              <span class="asset-help" id="assetHelp">同类素材按页面顺序编号，并由 IR 生成最终提示词</span>
             </div>
             <div class="asset-counts" aria-live="polite">
               <span id="imageCount">图片 0/9</span>
@@ -80,16 +80,26 @@
             </div>
           </div>
 
-          <input id="assetInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/mp4,audio/x-m4a" multiple hidden>
+          <input id="assetInput" type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a" multiple hidden>
           <button class="dropzone" id="dropzone" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/></svg>
             <strong>点击或拖拽上传素材</strong>
-            <span>图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB</span>
+            <span id="assetLimitHelp">图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB</span>
           </button>
           <div class="asset-list" id="assetList" aria-live="polite"></div>
 
           <div class="settings-grid">
             <fieldset>
+              <legend>Prompt 来源</legend>
+              <div class="segmented" data-control="prompt-source">
+                <button class="active" type="button" data-value="ir">使用 IR</button>
+                <button type="button" data-value="direct">自己输入 IR</button>
+              </div>
+              <input id="promptSourceInput" type="hidden" value="ir">
+              <small id="promptSourceHelp">先生成 IR 方案，核对映射后再提交 H3。</small>
+            </fieldset>
+
+            <fieldset id="irProviderFieldset">
               <legend>提示词优化 IR</legend>
               <select id="irProvider" aria-label="提示词优化 IR">
                 <option value="OpenH3-IR">OpenH3-IR · 现有方案</option>
@@ -147,9 +157,9 @@
           <div class="form-message" id="formMessage" role="alert" hidden></div>
           <button class="create-button" id="prepareButton" type="submit">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 3 14 9-14 9V3Z"/></svg>
-            生成 IR 方案
+            <span id="prepareButtonText">生成 IR 方案</span>
           </button>
-          <p class="submit-note">先上传素材并生成 IR，核对素材映射后才会提交 H3 任务。</p>
+          <p class="submit-note" id="submitNote">先上传素材并生成 IR，核对素材映射后才会提交 H3 任务。</p>
         </form>
       </section>
 
