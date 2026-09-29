@@ -320,3 +320,10 @@ test("direct prompt mode updates labels and hides the IR provider", () => {
   assert.match(nodes.get("#assetHelp").textContent, /<Picture N>/);
   assert.match(nodes.get("#assetLimitHelp").textContent, /60 MiB/);
 });
+
+test("malformed UTF-16 prompt text becomes valid Unicode without changing emoji", () => {
+  const {ctx} = context();
+  const normalized = vm.runInContext(`toWellFormedText("A\\uD800B\\uDC00C😀")`, ctx);
+  assert.equal(normalized, "A�B�C😀");
+  assert.doesNotMatch(JSON.stringify(normalized), /\\\\ud800|\\\\udc00/i);
+});

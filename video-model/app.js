@@ -68,6 +68,19 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
+function toWellFormedText(value) {
+  const text = String(value ?? "");
+  if (typeof text.toWellFormed === "function") return text.toWellFormed();
+  return text.replace(/[\uD800-\uDFFF]/g, (unit, offset) => {
+    const code = unit.charCodeAt(0);
+    const previous = offset > 0 ? text.charCodeAt(offset - 1) : 0;
+    const next = offset + 1 < text.length ? text.charCodeAt(offset + 1) : 0;
+    const pairedHigh = code >= 0xD800 && code <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF;
+    const pairedLow = code >= 0xDC00 && code <= 0xDFFF && previous >= 0xD800 && previous <= 0xDBFF;
+    return pairedHigh || pairedLow ? unit : "\uFFFD";
+  });
+}
+
 function parseHeaderLines(value) {
   return String(value || "")
     .split(/\r?\n/)
@@ -973,7 +986,7 @@ async function prepareIr() {
     const briefPayload = {
       model: "IR",
       ir_provider: state.preparedSettings.irProvider,
-      intent: $("#intentInput").value.trim(),
+      intent: toWellFormedText($("#intentInput").value.trim()),
       assets: state.preparedAssets.map((asset) => irAssetPayload(asset, state.preparedSettings.irProvider)),
       seconds: state.preparedSettings.seconds,
       aspect: state.preparedSettings.ratio,
@@ -1135,7 +1148,7 @@ async function createDirectH3Job() {
     quality: state.desiredQuality,
     seed: seedValue ? Number(seedValue) : null
   };
-  const prompt = $("#intentInput").value.trim();
+  const prompt = toWellFormedText($("#intentInput").value.trim());
   const submittedIr = snapshotDirectPrompt(prompt);
   $("#irReview").hidden = true;
   $("#resultCard").hidden = true;
