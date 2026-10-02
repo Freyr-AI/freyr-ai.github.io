@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20260914-history-v1">
-    <script defer src="app.js?v=20260929-direct-ir-r3"></script>
+    <link rel="stylesheet" href="styles.css?v=20261003-job-query-r1">
+    <script defer src="app.js?v=20261003-job-query-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -207,7 +207,10 @@
             <div class="progress-track"><span id="progressBar"></span></div>
             <p id="statusDetail">正在检查素材。</p>
             <div class="job-meta" id="jobMeta"></div>
-            <button class="button danger compact" id="cancelTask" type="button" hidden>取消排队任务</button>
+            <div class="job-actions">
+              <button class="button ghost compact" id="queryTask" type="button" title="只查询已有任务，不会重新生成或取消任务" hidden>手动查询</button>
+              <button class="button danger compact" id="cancelTask" type="button" hidden>取消排队任务</button>
+            </div>
           </div>
 
           <section class="ir-review" id="irReview" hidden>

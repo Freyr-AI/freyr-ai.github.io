@@ -14,6 +14,7 @@ const DIRECT_PROMPT_MAX_CHARS = 30000;
 const H3_POLL_BASE_MS = 10_000;
 const SR_POLL_BASE_MS = 3_000;
 const JOB_TIMEOUT_MS = 40 * 60 * 1000;
+const JOB_QUERY_TIMEOUT_MS = 15_000;
 const TRANSIENT_STATUS_CODES = new Set([500, 502, 503, 504]);
 const TERMINAL_STATUSES = new Set(["completed", "failed", "cancelled"]);
 const ALLOWED_MIME = {
@@ -47,6 +48,8 @@ const state = {
   preparedAssets: [],
   preparedSettings: null,
   currentJob: null,
+  jobQueries: new Map(),
+  manualQuerying: false,
   h3Job: null,
   srJob: null,
   desiredQuality: "768P",
@@ -572,7 +575,7 @@ async function reuseHistoryIr(record, button) {
   } catch (error) {
     if (error?.name === "AbortError" && !state.abortController) return;
     const detail = friendlyError(error);
-    setStatus("复用历史 IR 失败", detail, 0, "error");
+    reportVideoError(error, "复用历史 IR 失败");
     setHistoryMessage(`${record.id}：${detail}`, true);
     setDiagnostics({ phase: "reuse_ir", source_job_id: record.id, brief_id: briefId, error: detail });
   } finally {
@@ -809,6 +812,7 @@ function setStatus(title, detail, percent = 0, type = "") {
 }
 
 function setJobMeta(job, label) {
+  $("#queryTask").hidden = !job?.id;
   if (!job) {
     $("#jobMeta").innerHTML = "";
     return;
@@ -1019,52 +1023,151 @@ function retryAfterMs(error, fallback) {
 
 function delay(milliseconds, signal) {
   return new Promise((resolve, reject) => {
-    const timeout = window.setTimeout(resolve, milliseconds);
-    signal?.addEventListener("abort", () => {
+    if (signal?.aborted) return reject(new DOMException("Aborted", "AbortError"));
+    const onAbort = () => {
       window.clearTimeout(timeout);
+      signal?.removeEventListener("abort", onAbort);
       reject(new DOMException("Aborted", "AbortError"));
-    }, { once: true });
+    };
+    const timeout = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
-async function fetchJobWithRetry(jobId, model) {
+function isTransientJobError(error) {
+  return error?.name === "TimeoutError" || error instanceof TypeError
+    || (error instanceof ApiError && (error.status === 429 || error.status >= 500));
+}
+
+// Automatic and manual queries share one in-flight GET; never retry a POST.
+function fetchJobWithRetry(jobId, model) {
   const url = jobUrl(jobId, model);
+  const signal = state.abortController?.signal;
+  const existing = state.jobQueries.get(url);
+  if (existing && existing.signal === signal) return existing.promise;
+  const entry = { signal };
+  entry.promise = queryJobWithRetry(url, signal).finally(() => {
+    if (state.jobQueries.get(url) === entry) state.jobQueries.delete(url);
+  });
+  state.jobQueries.set(url, entry);
+  return entry.promise;
+}
+
+async function queryJobWithRetry(url, signal) {
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       return await fetchJson(url, {
         headers: authHeaders(),
         cache: "no-store",
-        signal: state.abortController?.signal
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(JOB_QUERY_TIMEOUT_MS)])
+          : AbortSignal.timeout(JOB_QUERY_TIMEOUT_MS)
       });
     } catch (error) {
-      if (error instanceof ApiError && error.status === 429) {
-        await delay(retryAfterMs(error, 15_000), state.abortController?.signal);
-        continue;
-      }
-      if (!(error instanceof ApiError) || !TRANSIENT_STATUS_CODES.has(error.status) || attempt === 3) throw error;
-      await delay([500, 1_000, 2_000][attempt] || 2_000, state.abortController?.signal);
+      if (signal?.aborted || !isTransientJobError(error) || attempt === 3) throw error;
+      const backoff = error instanceof ApiError && error.status === 429
+        ? Math.min(60_000, retryAfterMs(error, 15_000)) : [500, 1_000, 2_000][attempt];
+      await delay(backoff, signal);
     }
   }
-  throw new Error("状态查询失败。");
+}
+
+function jobProgress(job) {
+  if (TERMINAL_STATUSES.has(String(job?.status).toLowerCase())) return Number(job.progress) || 0;
+  return job?.phase === "sr" ? 75 + (Number(job?.progress) || 0) * 0.24
+    : 50 + (Number(job?.progress) || 0) * 0.25;
+}
+
+function renderJobStatus(job) {
+  const status = String(job.status || "").toLowerCase();
+  const phase = job.phase === "sr" ? "Video SR" : "MiniMax H3";
+  setJobMeta(job, phase);
+  setCancelVisible(["queued", "retrying"].includes(status));
+  if (status === "completed") {
+    setStatus("视频生成完成", "后台任务已完成，可查看或下载结果。", 100, "success");
+  } else if (TERMINAL_STATUSES.has(status)) {
+    setStatus(status === "cancelled" ? "视频任务已取消" : "视频任务失败",
+      job.error?.message || job.error?.code || `任务状态：${status}`, jobProgress(job), "error");
+  } else {
+    setStatus(job.phase === "sr" ? "正在生成 2K 视频" : "正在生成 768P 视频",
+      job.current_stage || (status === "queued" ? "任务正在排队" : "模型正在处理"), jobProgress(job));
+  }
+}
+
+function reportVideoError(error, fallbackTitle = "视频任务失败") {
+  const job = state.currentJob;
+  if (!job?.id) return setStatus(fallbackTitle, friendlyError(error), 0, "error");
+  if (String(job.status).toLowerCase() === "completed") {
+    return setStatus("视频已生成，后续操作未完成", `${friendlyError(error)}。可手动查询或从历史记录下载已完成的视频。`, 100);
+  }
+  if (TERMINAL_STATUSES.has(String(job.status).toLowerCase())) return renderJobStatus(job);
+  setJobMeta(job, job.phase === "sr" ? "Video SR" : "MiniMax H3");
+  setStatus("视频状态查询已暂停", `${friendlyError(error)}。未确认后台任务失败；可点击“手动查询”继续查看。`, jobProgress(job));
+}
+
+async function queryCurrentJob() {
+  const current = state.currentJob;
+  if (!current?.id || state.manualQuerying) return;
+  const controller = state.abortController;
+  const button = $("#queryTask");
+  state.manualQuerying = true;
+  button.disabled = true;
+  button.textContent = "正在查询…";
+  try {
+    const job = await fetchJobWithRetry(current.id, current.model);
+    if (state.currentJob?.id !== current.id || state.abortController !== controller) return;
+    state.currentJob = { ...job, model: current.model, phase: current.phase };
+    rememberJob(job, current.model, current.phase);
+    renderJobStatus(state.currentJob);
+    setDiagnostics({ phase: current.phase, job: state.currentJob });
+    // The active generation flow owns result loading and any subsequent SR.
+    // A manual recovery never creates another task, including an SR task.
+    if (!state.busy && String(job.status).toLowerCase() === "completed") {
+      await showCompletedVideo(job, current.phase === "sr" ? "2K" : "768P", current.model);
+    }
+  } catch (error) {
+    if (state.currentJob?.id !== current.id || state.abortController !== controller) return;
+    reportVideoError(error);
+    setDiagnostics({ phase: current.phase, job: current, error: friendlyError(error) });
+  } finally {
+    state.manualQuerying = false;
+    button.disabled = false;
+    button.textContent = "手动查询";
+  }
 }
 
 async function pollJob(initialJob, model, phase) {
   let job = initialJob;
   const startedAt = Date.now();
+  const signal = state.abortController?.signal;
   const baseDelay = phase === "sr" ? SR_POLL_BASE_MS : H3_POLL_BASE_MS;
+  let connectionLost = false;
+  state.currentJob = { ...job, model, phase };
   while (!TERMINAL_STATUSES.has(String(job.status || "").toLowerCase())) {
     rememberJob(job, model, phase);
     if (Date.now() - startedAt > JOB_TIMEOUT_MS) throw new Error(`等待 ${phase === "sr" ? "2K 超分" : "H3"} 任务超过 40 分钟。Job ID: ${job.id}`);
     state.currentJob = { ...job, model, phase };
-    const progress = Number(job.progress) || 0;
-    const title = phase === "sr" ? "正在生成 2K 视频" : "正在生成 768P 视频";
-    setStatus(title, job.current_stage || (job.status === "queued" ? "任务正在排队" : "模型正在处理"), phase === "sr" ? 75 + progress * 0.24 : 50 + progress * 0.25);
-    setJobMeta(job, phase === "sr" ? "Video SR" : "MiniMax H3");
-    setCancelVisible(["queued", "retrying"].includes(String(job.status || "").toLowerCase()));
+    if (!connectionLost) renderJobStatus(state.currentJob);
     const jitter = phase === "sr" ? Math.random() * 2_000 : Math.random() * 3_000;
-    await delay(baseDelay + jitter, state.abortController.signal);
-    job = await fetchJobWithRetry(job.id, model);
+    await delay(connectionLost ? 10_000 : baseDelay + jitter, signal);
+    if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+    if (state.currentJob?.id === job.id) job = state.currentJob;
+    if (TERMINAL_STATUSES.has(String(job.status).toLowerCase())) {
+      break;
+    }
+    try {
+      job = await fetchJobWithRetry(job.id, model);
+      connectionLost = false;
+    } catch (error) {
+      if (signal?.aborted || !isTransientJobError(error)) throw error;
+      setStatus("视频查询连接波动", `${job.id} · 未确认后台任务失败，正在自动重试；也可点击“手动查询”。`, jobProgress(state.currentJob));
+      setDiagnostics({ phase, job: state.currentJob, error: friendlyError(error) });
+      connectionLost = true;
+    }
   }
+  state.currentJob = { ...job, model, phase };
   rememberJob(job, model, phase);
   setCancelVisible(false);
   if (String(job.status).toLowerCase() !== "completed") {
@@ -1109,7 +1212,7 @@ async function createH3Job() {
     }
   } catch (error) {
     if (error?.name === "AbortError" && !state.abortController) return;
-    setStatus("视频任务失败", friendlyError(error), 0, "error");
+    reportVideoError(error);
     setDiagnostics({ phase: state.currentJob?.phase || "h3", job: state.currentJob, error: friendlyError(error) });
   } finally {
     setBusy(false);
@@ -1202,7 +1305,7 @@ async function createDirectH3Job() {
     }
   } catch (error) {
     if (error?.name === "AbortError" && !state.abortController) return;
-    setStatus("视频任务失败", friendlyError(error), 0, "error");
+    reportVideoError(error);
     setDiagnostics({ phase: "direct_h3", job: state.currentJob, error: friendlyError(error) });
   } finally {
     setBusy(false);
@@ -1232,31 +1335,39 @@ function contentUrl(job, model) {
   return `${API_V1_ROOT}/videos/${encodeURIComponent(job.id)}/content?model=${encodeURIComponent(model)}`;
 }
 
-async function showCompletedVideo(job, quality) {
-  setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
-  setJobMeta(job, quality === "2K" ? "Video SR" : "MiniMax H3");
-  const model = quality === "2K" ? "FreyrAI/SR-D3-2K" : state.preparedSettings.model;
-  const response = await fetch(contentUrl(job, model), {
-    headers: authHeaders(),
-    signal: state.abortController.signal
-  });
-  if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response));
-  const blob = await response.blob();
-  if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
-  state.resultObjectUrl = URL.createObjectURL(blob);
-  $("#resultVideo").src = state.resultObjectUrl;
-  $("#resultCard").hidden = false;
-  $("#resultQuality").textContent = `${quality} output`;
-  const cost = Number(job.cost?.total_cost);
-  const duration = Number(job.duration_seconds || job.usage?.output_seconds);
-  $("#resultSummary").textContent = [
-    Number.isFinite(duration) ? `${duration.toFixed(2)} 秒` : "",
-    Number.isFinite(cost) ? `USD $${cost.toFixed(4)}` : "",
-    job.id
-  ].filter(Boolean).join(" · ");
-  $("#resultIrPrompt").innerHTML = irSnapshotMarkup(state.history.find((record) => record.id === job.id)?.irSnapshot);
-  $("#downloadVideo").dataset.filename = `${job.id || "freyr-minimax-h3"}-${quality.toLowerCase()}.mp4`;
-  setDiagnostics({ h3_job: state.h3Job, sr_job: state.srJob });
+async function showCompletedVideo(job, quality, model = quality === "2K" ? "FreyrAI/SR-D3-2K" : state.preparedSettings?.model) {
+  const controller = state.abortController;
+  try {
+    setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
+    setJobMeta(job, quality === "2K" ? "Video SR" : "MiniMax H3");
+    const response = await fetch(contentUrl(job, model), {
+      headers: authHeaders(),
+      signal: controller?.signal ? AbortSignal.any([controller.signal, AbortSignal.timeout(120_000)])
+        : AbortSignal.timeout(120_000)
+    });
+    if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response));
+    const blob = await response.blob();
+    if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
+    if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
+    state.resultObjectUrl = URL.createObjectURL(blob);
+    $("#resultVideo").src = state.resultObjectUrl;
+    $("#resultCard").hidden = false;
+    $("#resultQuality").textContent = `${quality} output`;
+    const cost = Number(job.cost?.total_cost);
+    const duration = Number(job.duration_seconds || job.usage?.output_seconds);
+    $("#resultSummary").textContent = [
+      Number.isFinite(duration) ? `${duration.toFixed(2)} 秒` : "",
+      Number.isFinite(cost) ? `USD $${cost.toFixed(4)}` : "",
+      job.id
+    ].filter(Boolean).join(" · ");
+    $("#resultIrPrompt").innerHTML = irSnapshotMarkup(state.history.find((record) => record.id === job.id)?.irSnapshot);
+    $("#downloadVideo").dataset.filename = `${job.id || "freyr-minimax-h3"}-${quality.toLowerCase()}.mp4`;
+    setDiagnostics({ h3_job: state.h3Job, sr_job: state.srJob });
+  } catch (error) {
+    if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
+    setStatus("视频已生成，结果加载失败", `${friendlyError(error)}。可点击“手动查询”重新加载，或在历史记录中下载。`, 100);
+    setDiagnostics({ phase: "video_content", job, error: friendlyError(error) });
+  }
 }
 
 async function cancelCurrentJob() {
@@ -1394,6 +1505,7 @@ function bindEvents() {
   $("#confirmGenerate").addEventListener("click", createH3Job);
   $("#rebuildIr").addEventListener("click", prepareIr);
   $("#cancelTask").addEventListener("click", cancelCurrentJob);
+  $("#queryTask").addEventListener("click", queryCurrentJob);
   $("#resetTask").addEventListener("click", resetTask);
   $("#clearHistory").addEventListener("click", () => {
     state.history = [];

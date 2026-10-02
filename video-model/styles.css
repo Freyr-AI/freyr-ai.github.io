@@ -230,6 +230,7 @@ legend span { color: var(--muted); font-weight: 600; }
 .status-card p { color: var(--muted); font-size: 11px; }
 .job-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .job-meta span { padding: 4px 7px; border-radius: 7px; color: #555a65; background: var(--surface-soft); font: 10px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.job-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
 
 .ir-review { padding: 15px; }
 .review-status { padding: 4px 7px; border-radius: 999px; color: var(--success); background: rgba(23, 136, 98, 0.09); font-size: 9px; font-weight: 850; text-transform: uppercase; }
