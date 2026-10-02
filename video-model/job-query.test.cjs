@@ -158,6 +158,31 @@ test("a result download error preserves completed status at 100 percent", async 
   assert.equal(vm.runInContext("state.currentJob.status", ctx), "completed");
 });
 
+test("result GET retries fetch and body failures without submitting a new task", async () => {
+  const {ctx} = context();
+  vm.runInContext(`globalThis.calls=0; fetch=async(url, options)=>{
+    calls++; if(options.method) throw new Error('Must not submit');
+    if(!options.signal) throw new Error('Missing timeout');
+    if(calls===1) throw new TypeError('Failed to fetch');
+    return {ok:true,blob:async()=>{if(calls===2) throw new TypeError('Body interrupted'); return 'video-blob';}};
+  };`, ctx);
+  assert.equal(await vm.runInContext("fetchVideoBlob(state.currentJob,state.currentJob.model,state.abortController.signal)", ctx), "video-blob");
+  assert.equal(ctx.calls, 3);
+});
+
+test("result GET does not retry auth, expired results or cancellation", async () => {
+  for (const code of [401,403,404]) {
+    const {ctx} = context();
+    vm.runInContext(`globalThis.calls=0; fetch=async()=>{calls++; throw new ApiError(${code},{});};`, ctx);
+    await assert.rejects(vm.runInContext("fetchVideoBlob(state.currentJob,state.currentJob.model)",ctx));
+    assert.equal(ctx.calls,1);
+  }
+  const {ctx} = context();
+  vm.runInContext(`globalThis.calls=0; fetch=async()=>{calls++; state.abortController.abort(); throw new DOMException('Aborted','AbortError');};`,ctx);
+  await assert.rejects(vm.runInContext("fetchVideoBlob(state.currentJob,state.currentJob.model,state.abortController.signal)",ctx));
+  assert.equal(ctx.calls,1);
+});
+
 test("manual completion loads authenticated content without prepared form settings", async () => {
   const {ctx, nodes} = context();
   vm.runInContext(`state.preparedSettings=null;

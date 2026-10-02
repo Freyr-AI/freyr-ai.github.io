@@ -605,9 +605,7 @@ async function downloadHistoryJob(record, button) {
   button.disabled = true;
   setHistoryMessage(`正在下载 ${record.id}…`);
   try {
-    const response = await fetch(contentUrl(record, record.model), { headers: authHeaders() });
-    if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response));
-    const objectUrl = URL.createObjectURL(await response.blob());
+    const objectUrl = URL.createObjectURL(await fetchVideoBlob(record, record.model));
     const anchor = document.createElement("a");
     anchor.href = objectUrl;
     anchor.download = `${record.id}-${String(record.quality || "video").toLowerCase()}.mp4`;
@@ -1335,18 +1333,33 @@ function contentUrl(job, model) {
   return `${API_V1_ROOT}/videos/${encodeURIComponent(job.id)}/content?model=${encodeURIComponent(model)}`;
 }
 
+// Retry only authenticated result GETs, including interrupted response bodies.
+// Never resubmit generation or change the completed backend state.
+async function fetchVideoBlob(job, model, signal) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(contentUrl(job, model), {
+        headers: authHeaders(),
+        cache: "no-store",
+        signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(120_000)])
+          : AbortSignal.timeout(120_000)
+      });
+      if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response), response.headers?.get("Retry-After"));
+      return await response.blob();
+    } catch (error) {
+      if (signal?.aborted || !isTransientJobError(error) || attempt === 2) throw error;
+      await delay(error instanceof ApiError && error.status === 429
+        ? Math.min(60_000, retryAfterMs(error, 15_000)) : [500, 1_000][attempt], signal);
+    }
+  }
+}
+
 async function showCompletedVideo(job, quality, model = quality === "2K" ? "FreyrAI/SR-D3-2K" : state.preparedSettings?.model) {
   const controller = state.abortController;
   try {
     setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
     setJobMeta(job, quality === "2K" ? "Video SR" : "MiniMax H3");
-    const response = await fetch(contentUrl(job, model), {
-      headers: authHeaders(),
-      signal: controller?.signal ? AbortSignal.any([controller.signal, AbortSignal.timeout(120_000)])
-        : AbortSignal.timeout(120_000)
-    });
-    if (!response.ok) throw new ApiError(response.status, await parseResponseBody(response));
-    const blob = await response.blob();
+    const blob = await fetchVideoBlob(job, model, controller?.signal);
     if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
     if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
     state.resultObjectUrl = URL.createObjectURL(blob);
