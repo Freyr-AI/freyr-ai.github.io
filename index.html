@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="assets/icon.png">
     <link rel="stylesheet" href="assets/styles.css?v=20260902-image-paths">
     <script src="config/model-categories.js"></script>
-    <script defer src="assets/app-pricing-negotiable-20260605.js?v=20260903-clean-model-names-2"></script>
+    <script defer src="assets/app-pricing-negotiable-20260605.js?v=20261007-display-pricing"></script>
   </head>
   <body data-page="pricing">
     <div class="site-shell">
@@ -36,7 +36,7 @@
           <div class="container">
             <span class="eyebrow">Model pricing</span>
             <h1>Transparent pricing for text, image, music, and video models</h1>
-            <p>Text pricing is loaded directly from Freyr's native model info API. Media model pricing is marked negotiable while commercial terms are finalized.</p>
+            <p>Compare live model pricing and display-only reference quotes. Text prices are per 1M tokens; video prices are per second when quoted.</p>
             <div class="api-status is-loading" data-api-status="pricing">Loading live pricing API...</div>
           </div>
         </section>
@@ -64,7 +64,7 @@
             <div class="pricing-table-card">
               <div class="pricing-table-head">
                 <div>
-                  <span class="kicker">Live pricing catalog</span>
+                  <span class="kicker">Model pricing catalog</span>
                   <h2>Model price list</h2>
                 </div>
                 <p id="pricingUpdated">Loading pricing...</p>
@@ -86,7 +86,7 @@
               </div>
             </div>
 
-            <div class="callout">Text pricing is loaded directly from the public model info API and normalized from token cost fields. Image, music, and video pricing is currently negotiable.</div>
+            <div class="callout">Display-only entries use the median of OpenRouter endpoint quotes and do not enable inference. H3 uses its video-second price; reference image fees are separate. Dated reference quotes remain visible when live pricing is unavailable.</div>
           </div>
         </section>
       </main>

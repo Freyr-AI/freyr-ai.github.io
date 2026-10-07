@@ -1,0 +1,1291 @@
+{
+  "fetchedAt": "2026-10-07T09:27:55.490352+00:00",
+  "sources": [
+    {
+      "model_name": "KimiK3",
+      "openrouter_model_id": "moonshotai/kimi-k3",
+      "url": "https://openrouter.ai/api/v1/models/moonshotai/kimi-k3/endpoints",
+      "method": "median of listed endpoint prices; each endpoint is one observation; no batch variants",
+      "endpoint_count": 24,
+      "endpoints": [
+        {
+          "provider": "Relace",
+          "pricing": {
+            "prompt": "0.00000061",
+            "completion": "0.000013",
+            "input_cache_read": "0.00000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.00000062",
+            "completion": "0.000015",
+            "input_cache_read": "0.00000043",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.00000084",
+            "completion": "0.0000135",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Morph",
+          "pricing": {
+            "prompt": "0.000001125",
+            "completion": "0.000011593",
+            "input_cache_read": "0.000000278",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "AkashML",
+          "pricing": {
+            "prompt": "0.0000012",
+            "completion": "0.000014",
+            "input_cache_read": "0.0000012",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.0000015",
+            "completion": "0.000015",
+            "input_cache_read": "0.00000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Makora",
+          "pricing": {
+            "prompt": "0.00000153",
+            "completion": "0.00001275",
+            "input_cache_read": "0.000000204",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Phala",
+          "pricing": {
+            "prompt": "0.00000195",
+            "completion": "0.00000975",
+            "input_cache_read": "0.000000195",
+            "discount": 0.35
+          }
+        },
+        {
+          "provider": "Decart",
+          "pricing": {
+            "prompt": "0.00000252",
+            "completion": "0.0000126",
+            "input_cache_read": "0.000000252",
+            "discount": 0.16
+          }
+        },
+        {
+          "provider": "DigitalOcean",
+          "pricing": {
+            "prompt": "0.00000255",
+            "completion": "0.00001295",
+            "input_cache_read": "0.000000255",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Parasail",
+          "pricing": {
+            "prompt": "0.0000026",
+            "completion": "0.000013",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Together",
+          "pricing": {
+            "prompt": "0.0000027",
+            "completion": "0.0000135",
+            "input_cache_read": "0.00000027",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.0000028",
+            "completion": "0.000014",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DeepInfra",
+          "pricing": {
+            "prompt": "0.00000285",
+            "completion": "0.00001425",
+            "input_cache_read": "0.000000285",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Amazon Bedrock",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "input_cache_write": "0.00000375",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Chutes",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Modal",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Moonshot AI",
+          "pricing": {
+            "prompt": "0.000003",
+            "completion": "0.000015",
+            "input_cache_read": "0.0000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Alibaba",
+          "pricing": {
+            "prompt": "0.00000345",
+            "completion": "0.00001725",
+            "input_cache_read": "0.000000345",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.0000035",
+            "completion": "0.000015",
+            "input_cache_read": "0.00000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.0000045",
+            "completion": "0.0000225",
+            "input_cache_read": "0.00000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.0000045",
+            "completion": "0.0000225",
+            "input_cache_read": "0.00000045",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model_name": "GLM5.3",
+      "openrouter_model_id": "z-ai/glm-5.3",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3/endpoints",
+      "method": "median of listed endpoint prices; each endpoint is one observation; no batch variants",
+      "endpoint_count": 41,
+      "endpoints": [
+        {
+          "provider": "Relace",
+          "pricing": {
+            "prompt": "0.000000063",
+            "completion": "0.0000063",
+            "input_cache_read": "0.0000000585",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.00000007",
+            "completion": "0.000007",
+            "input_cache_read": "0.000000065",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Morph",
+          "pricing": {
+            "prompt": "0.000000071",
+            "completion": "0.000003553",
+            "input_cache_read": "0.000000108",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Makora",
+          "pricing": {
+            "prompt": "0.00000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.0000001",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Reka",
+          "pricing": {
+            "prompt": "0.00000017",
+            "completion": "0.00000396",
+            "input_cache_read": "0.000000169",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.00000017",
+            "completion": "0.000007",
+            "input_cache_read": "0.00000016",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.00000018",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000008",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "AkashML",
+          "pricing": {
+            "prompt": "0.00000019",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000019",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.0000002",
+            "completion": "0.0000034",
+            "input_cache_read": "0.00000015",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.0000002",
+            "completion": "0.0000034",
+            "input_cache_read": "0.00000015",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Novita",
+          "pricing": {
+            "prompt": "0.00000042",
+            "completion": "0.00000132",
+            "input_cache_read": "0.000000078",
+            "discount": 0.7
+          }
+        },
+        {
+          "provider": "DeepInfra",
+          "pricing": {
+            "prompt": "0.0000005625",
+            "completion": "0.0000025",
+            "input_cache_read": "0.000000125",
+            "discount": 0.375
+          }
+        },
+        {
+          "provider": "Inceptron",
+          "pricing": {
+            "prompt": "0.0000006",
+            "completion": "0.00000339",
+            "input_cache_read": "0.0000002",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "SiliconFlow",
+          "pricing": {
+            "prompt": "0.0000007",
+            "completion": "0.0000022",
+            "input_cache_read": "0.00000013",
+            "discount": 0.5
+          }
+        },
+        {
+          "provider": "Phala",
+          "pricing": {
+            "prompt": "0.00000084",
+            "completion": "0.00000264",
+            "input_cache_read": "0.000000156",
+            "discount": 0.4
+          }
+        },
+        {
+          "provider": "DigitalOcean",
+          "pricing": {
+            "prompt": "0.00000091",
+            "completion": "0.00000286",
+            "input_cache_read": "0.000000169",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "GMICloud",
+          "pricing": {
+            "prompt": "0.00000098",
+            "completion": "0.00000308",
+            "input_cache_read": "0.000000182",
+            "discount": 0.3
+          }
+        },
+        {
+          "provider": "Alibaba",
+          "pricing": {
+            "prompt": "0.00000119",
+            "completion": "0.00000374",
+            "input_cache_read": "0.000000238",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Decart",
+          "pricing": {
+            "prompt": "0.00000119",
+            "completion": "0.00000374",
+            "input_cache_read": "0.0000001955",
+            "discount": 0.15
+          }
+        },
+        {
+          "provider": "Friendli",
+          "pricing": {
+            "prompt": "0.00000126",
+            "completion": "0.00000396",
+            "input_cache_read": "0.000000234",
+            "discount": 0.1
+          }
+        },
+        {
+          "provider": "Mistral",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000014",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Baidu",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000014",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Mistral",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000014",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Nebius",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Crusoe",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "PrimeIntellect",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Venice",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0.2
+          }
+        },
+        {
+          "provider": "Together",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Parasail",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Modal",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000014",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Cloudflare",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "AtlasCloud",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Z.AI",
+          "pricing": {
+            "prompt": "0.0000014",
+            "completion": "0.0000044",
+            "input_cache_read": "0.00000026",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Mistral",
+          "pricing": {
+            "prompt": "0.00000154",
+            "completion": "0.00000484",
+            "input_cache_read": "0.000000154",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.0000021",
+            "completion": "0.0000066",
+            "input_cache_read": "0.00000039",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000021",
+            "completion": "0.0000066",
+            "input_cache_read": "0.00000021",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000021",
+            "completion": "0.0000066",
+            "input_cache_read": "0.00000021",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Alibaba",
+          "pricing": {
+            "prompt": "0.0000028",
+            "completion": "0.0000088",
+            "input_cache_read": "0.00000056",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model_name": "GLM5.3 Flash",
+      "openrouter_model_id": "z-ai/glm-5.3-flash",
+      "url": "https://openrouter.ai/api/v1/models/z-ai/glm-5.3-flash/endpoints",
+      "method": "median of listed endpoint prices; each endpoint is one observation; no batch variants",
+      "endpoint_count": 33,
+      "endpoints": [
+        {
+          "provider": "Relace",
+          "pricing": {
+            "prompt": "0.0000000317",
+            "completion": "0.0000005",
+            "input_cache_read": "0.0000000317",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "OpenInference",
+          "pricing": {
+            "prompt": "0.00000003487",
+            "completion": "0.0000006875",
+            "input_cache_read": "0.00000003487",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.000000045",
+            "completion": "0.0000006",
+            "input_cache_read": "0.0000000285",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.000000045",
+            "completion": "0.0000006",
+            "input_cache_read": "0.0000000285",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DeepInfra",
+          "pricing": {
+            "prompt": "0.000000075",
+            "completion": "0.00000025",
+            "input_cache_read": "0.000000015",
+            "discount": 0.5
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.00000008",
+            "completion": "0.0000005",
+            "input_cache_read": "0.000000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Novita",
+          "pricing": {
+            "prompt": "0.000000084",
+            "completion": "0.00000028",
+            "input_cache_read": "0.0000000168",
+            "discount": 0.44
+          }
+        },
+        {
+          "provider": "Decart",
+          "pricing": {
+            "prompt": "0.000000087",
+            "completion": "0.00000029",
+            "input_cache_read": "0.0000000174",
+            "discount": 0.42
+          }
+        },
+        {
+          "provider": "StreamLake",
+          "pricing": {
+            "prompt": "0.000000087",
+            "completion": "0.00000029",
+            "input_cache_read": "0.0000000174",
+            "discount": 0.42
+          }
+        },
+        {
+          "provider": "GMICloud",
+          "pricing": {
+            "prompt": "0.00000009",
+            "completion": "0.0000003",
+            "input_cache_read": "0.000000018",
+            "discount": 0.4
+          }
+        },
+        {
+          "provider": "DekaLLM",
+          "pricing": {
+            "prompt": "0.0000001",
+            "completion": "0.000001",
+            "input_cache_read": "0.00000004",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Near AI",
+          "pricing": {
+            "prompt": "0.000000105",
+            "completion": "0.00000035",
+            "input_cache_read": "0.0000000245",
+            "discount": 0.3
+          }
+        },
+        {
+          "provider": "Phala",
+          "pricing": {
+            "prompt": "0.0000001125",
+            "completion": "0.000000375",
+            "input_cache_read": "0.0000000225",
+            "discount": 0.25
+          }
+        },
+        {
+          "provider": "Modal",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Crusoe",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "CoreWeave",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000005",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "AtlasCloud",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Friendli",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "SiliconFlow",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DigitalOcean",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Together",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Parasail",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Venice",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Z.AI",
+          "pricing": {
+            "prompt": "0.00000015",
+            "completion": "0.0000005",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.00000016",
+            "completion": "0.0000005",
+            "input_cache_read": "0.000000155",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Morph",
+          "pricing": {
+            "prompt": "0.00000016",
+            "completion": "0.000000646",
+            "input_cache_read": "0.000000017",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Inceptron",
+          "pricing": {
+            "prompt": "0.000000225",
+            "completion": "0.0000006",
+            "input_cache_read": "0.00000009",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.000000225",
+            "completion": "0.00000075",
+            "input_cache_read": "0.000000045",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Cloudflare",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.000001",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Reka",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.000002",
+            "input_cache_read": "0.00000006",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model_name": "Deepseek 4.1",
+      "openrouter_model_id": "deepseek/deepseek-v4.1-flash",
+      "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints",
+      "method": "median of listed endpoint prices; each endpoint is one observation; no batch variants",
+      "endpoint_count": 29,
+      "endpoints": [
+        {
+          "provider": "Relace",
+          "pricing": {
+            "prompt": "0.00000005",
+            "completion": "0.0000012",
+            "input_cache_read": "0.00000002",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Morph",
+          "pricing": {
+            "prompt": "0.000000068",
+            "completion": "0.000000424",
+            "input_cache_read": "0.000000009",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Sail Research",
+          "pricing": {
+            "prompt": "0.00000008",
+            "completion": "0.0000004",
+            "input_cache_read": "0.00000001",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Decart",
+          "pricing": {
+            "prompt": "0.00000009",
+            "completion": "0.00000018",
+            "input_cache_read": "0.000000018",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DekaLLM",
+          "pricing": {
+            "prompt": "0.00000012",
+            "completion": "0.0000024",
+            "input_cache_read": "0.000000005",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.000000135",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000059",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DeepInfra",
+          "pricing": {
+            "prompt": "0.00000014",
+            "completion": "0.00000042",
+            "input_cache_read": "0.0000000042",
+            "discount": 0.3
+          }
+        },
+        {
+          "provider": "StreamLake",
+          "pricing": {
+            "prompt": "0.000000141",
+            "completion": "0.000000564",
+            "input_cache_read": "0.00000000282",
+            "discount": 0.53
+          }
+        },
+        {
+          "provider": "AtlasCloud",
+          "pricing": {
+            "prompt": "0.000000141",
+            "completion": "0.000000564",
+            "input_cache_read": "0.0000000141",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.000000145",
+            "completion": "0.0000003",
+            "input_cache_read": "0.000000035",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Ionstream",
+          "pricing": {
+            "prompt": "0.0000001782",
+            "completion": "0.00000115",
+            "input_cache_read": "0.0000000055",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DigitalOcean",
+          "pricing": {
+            "prompt": "0.00000018",
+            "completion": "0.00000072",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "GMICloud",
+          "pricing": {
+            "prompt": "0.00000018",
+            "completion": "0.00000072",
+            "input_cache_read": "0.0000000036",
+            "discount": 0.4
+          }
+        },
+        {
+          "provider": "Novita",
+          "pricing": {
+            "prompt": "0.000000195",
+            "completion": "0.00000078",
+            "input_cache_read": "0.0000000039",
+            "discount": 0.35
+          }
+        },
+        {
+          "provider": "CoreWeave",
+          "pricing": {
+            "prompt": "0.0000002",
+            "completion": "0.00000065",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Phala",
+          "pricing": {
+            "prompt": "0.00000021",
+            "completion": "0.00000084",
+            "input_cache_read": "0.0000000042",
+            "discount": 0.3
+          }
+        },
+        {
+          "provider": "Makora",
+          "pricing": {
+            "prompt": "0.00000027",
+            "completion": "0.00000115",
+            "input_cache_read": "0.000000009",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Baidu",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000007",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Alibaba",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.00000003",
+            "discount": 0,
+            "overrides": [
+              {
+                "utc_start": 0,
+                "utc_end": 1400,
+                "prompt": "0.0000003",
+                "completion": "0.0000012",
+                "input_cache_read": "0.00000003"
+              },
+              {
+                "utc_start": 1400,
+                "utc_end": 0,
+                "prompt": "0.00000015",
+                "completion": "0.0000006",
+                "input_cache_read": "0.000000015"
+              }
+            ]
+          }
+        },
+        {
+          "provider": "Together",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "SiliconFlow",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Modal",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.00000003",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "BaseTen",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000007",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Parasail",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Venice",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.0000000075",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "DeepSeek",
+          "pricing": {
+            "prompt": "0.0000003",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000006",
+            "discount": 0,
+            "overrides": [
+              {
+                "utc_days": [
+                  "saturday",
+                  "sunday"
+                ],
+                "prompt": "0.00000015",
+                "completion": "0.0000006",
+                "input_cache_read": "0.000000003"
+              },
+              {
+                "utc_start": 0,
+                "utc_end": 100,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000015",
+                "completion": "0.0000006",
+                "input_cache_read": "0.000000003"
+              },
+              {
+                "utc_start": 100,
+                "utc_end": 400,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.0000003",
+                "completion": "0.0000012",
+                "input_cache_read": "0.000000006"
+              },
+              {
+                "utc_start": 400,
+                "utc_end": 600,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000015",
+                "completion": "0.0000006",
+                "input_cache_read": "0.000000003"
+              },
+              {
+                "utc_start": 600,
+                "utc_end": 1000,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.0000003",
+                "completion": "0.0000012",
+                "input_cache_read": "0.000000006"
+              },
+              {
+                "utc_start": 1000,
+                "utc_end": 0,
+                "utc_days": [
+                  "monday",
+                  "tuesday",
+                  "wednesday",
+                  "thursday",
+                  "friday"
+                ],
+                "prompt": "0.00000015",
+                "completion": "0.0000006",
+                "input_cache_read": "0.000000003"
+              }
+            ]
+          }
+        },
+        {
+          "provider": "Fireworks",
+          "pricing": {
+            "prompt": "0.00000045",
+            "completion": "0.0000018",
+            "input_cache_read": "0.000000009",
+            "discount": 0
+          }
+        }
+      ]
+    },
+    {
+      "model_name": "H3",
+      "openrouter_model_id": "minimax/hailuo-3",
+      "url": "https://openrouter.ai/api/v1/videos/models",
+      "method": "one provider; use duration_seconds SKU; reference image fee excluded from video-second price",
+      "pricing_skus": {
+        "duration_seconds": "0.13",
+        "reference_images": "0.04"
+      }
+    }
+  ]
+}

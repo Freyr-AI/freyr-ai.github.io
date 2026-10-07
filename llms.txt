@@ -12,6 +12,8 @@ Machine-readable resources:
 
 - Model category configuration: https://www.token-exchange-ai.com/config/model-categories.js
 - Model catalog fallback: https://www.token-exchange-ai.com/assets/models.json
+- Display-only reference pricing: https://www.token-exchange-ai.com/assets/display-pricing.json
+- Reference pricing sources: https://www.token-exchange-ai.com/config/display-pricing-sources.json
 - Sitemap: https://www.token-exchange-ai.com/sitemap.xml
 
 Pricing notes:
@@ -19,3 +21,5 @@ Pricing notes:
 - Public model categories are text, image, music, and video.
 - Token pricing is shown for text models only when the API returns a positive token cost.
 - Zero or unavailable token prices are displayed as `Negotiable`.
+
+Display-only references include Kimi K3, GLM 5.3, MiniMax H3, GLM 5.3 Flash, and DeepSeek 4.1 (OpenRouter DeepSeek V4.1 Flash). Text quotes are endpoint medians per 1M tokens. H3 is quoted per video second. Display entries do not establish inference availability.

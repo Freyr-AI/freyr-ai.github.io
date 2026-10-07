@@ -244,7 +244,7 @@ function apiConfig() {
 function friendlyApiError(error) {
   const message = error instanceof Error ? error.message : String(error || "");
   if (/failed to fetch|load failed|network|cors/i.test(message)) {
-    return "Browser direct request was blocked. Enable CORS in Cloudflare/API for this static origin.";
+    return "The pricing API could not be reached. Check the API gateway, connectivity, and CORS configuration.";
   }
   return message || "Unknown API error.";
 }
@@ -252,6 +252,7 @@ function friendlyApiError(error) {
 function apiStatusText(scope) {
   const status = state.apiStatus[scope] || { type: "loading", detail: "" };
   if (status.type === "live") return label(scope === "pricing" ? "Live pricing API loaded." : "Live model API loaded.");
+  if (status.type === "snapshot") return "Showing dated reference pricing. Live pricing is temporarily unavailable.";
   if (status.type === "missing-config") return label("Missing static API config; live data is unavailable.");
   if (status.type === "fallback") return `${label("Live API unavailable.")} ${label(status.detail)}`;
   return label(scope === "pricing" ? "Loading live pricing API..." : "Loading live model API...");
@@ -337,8 +338,9 @@ function titleFromModel(modelName) {
 }
 
 function pricePerMillion(value) {
+  if (value === null || value === undefined || value === "") return undefined;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed * 1_000_000 : undefined;
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed * 1_000_000 : undefined;
 }
 
 function categoryLabel(category) {
@@ -376,7 +378,7 @@ function normalizeModelInfo(upstream) {
   const rows = Array.isArray(upstream?.data) ? upstream.data : Array.isArray(upstream) ? upstream : [];
   const models = rows.map((row) => {
     const modelName = row.model_name || row.id || row.name;
-    const category = categoryFor(modelName, categories);
+    const category = row.mode === "video" ? "video" : categoryFor(modelName, categories);
     const override = categories.overrides?.[modelName] || {};
     const input = pricePerMillion(row.input_cost_per_token);
     const output = pricePerMillion(row.output_cost_per_token);
@@ -384,9 +386,9 @@ function normalizeModelInfo(upstream) {
 
     return {
       id: modelName,
-      displayName: override.displayName || titleFromModel(modelName),
+      displayName: row.display_name || override.displayName || titleFromModel(modelName),
       category,
-      provider: override.provider || providerFromModel(modelName),
+      provider: row.provider || override.provider || providerFromModel(modelName),
       description: override.description || `${categoryLabel(category)} model served through Freyr's native model API.`,
       capabilities: override.capabilities || (category === "text" ? ["chat"] : [`${category} generation`]),
       contextWindow: override.contextWindow || "Provider defined",
@@ -411,16 +413,18 @@ function normalizeModelInfo(upstream) {
       inputPerMillionTokens: model.category === "text" ? pricePerMillion(row.input_cost_per_token) : undefined,
       outputPerMillionTokens: model.category === "text" ? pricePerMillion(row.output_cost_per_token) : undefined,
       cacheReadInputPerMillionTokens: pricePerMillion(row.cache_read_input_token_cost),
-      unit: model.category === "text" ? "1M tokens" : NEGOTIABLE_PRICE_LABEL,
-      status: "available"
+      pricePerVideoSecond: row.price_per_video_second === null || row.price_per_video_second === undefined
+        ? undefined : Number(row.price_per_video_second),
+      unit: model.category === "text" ? "1M tokens" : model.category === "video" ? "second" : NEGOTIABLE_PRICE_LABEL,
+      status: row.status === "display_only" ? "display_only" : "available"
     };
   });
 
   return {
     object: "list",
-    updatedAt: new Date().toISOString(),
-    currency: "USD",
-    sourceNote: "Loaded directly from Freyr native model info API.",
+    updatedAt: upstream.updatedAt || new Date().toISOString(),
+    currency: upstream.currency || "USD",
+    sourceNote: upstream.sourceNote || "Loaded directly from Freyr native model info API.",
     models,
     prices,
     raw: upstream
@@ -430,7 +434,7 @@ function normalizeModelInfo(upstream) {
 async function fetchDirectModelInfo() {
   if (!hasStaticApiConfig()) throw new Error("Missing static API config");
   const config = apiConfig();
-  const response = await fetch(`${config.baseUrl}/model/info`);
+  const response = await fetch(`${config.baseUrl}/model/info`, { signal: AbortSignal.timeout(12000) });
   if (!response.ok) throw new Error(`Model info request failed with status ${response.status}`);
   return normalizeModelInfo(await response.json());
 }
@@ -466,25 +470,37 @@ async function loadModels() {
   }
 }
 
+async function loadDisplayPricing() {
+  const response = await fetch("assets/display-pricing.json", { cache: "no-store" });
+  if (!response.ok) throw new Error(`Reference pricing request failed with status ${response.status}`);
+  const payload = await response.json();
+  if (!Array.isArray(payload.data) || !payload.data.length || !payload.updatedAt
+      || payload.data.some((row) => row.status !== "display_only")) {
+    throw new Error("Invalid display pricing catalog");
+  }
+  return normalizeModelInfo(payload);
+}
+
 async function loadPricing() {
   setApiStatus("pricing", "loading");
-  let lastError;
-
-  if (hasStaticApiConfig()) {
-    try {
-      const data = await fetchDirectModelInfo();
-      setApiStatus("pricing", "live");
-      return data;
-    } catch (error) {
-      lastError = error;
-      console.warn(error);
-    }
-  } else {
-    setApiStatus("pricing", "missing-config");
+  // Attach both rejection handlers immediately; the snapshot request can fail first.
+  const displayRequest = loadDisplayPricing().catch(() => null);
+  const liveRequest = fetchDirectModelInfo().catch((error) => ({ error }));
+  const [display, live] = await Promise.all([displayRequest, liveRequest]);
+  if (!live.error && live.prices.length) {
+    const names = new Set(live.prices.map((row) => row.modelId));
+    const extraPrices = (display?.prices || []).filter((row) => !names.has(row.modelId));
+    const extraModels = (display?.models || []).filter((row) => !names.has(row.id));
+    setApiStatus("pricing", "live");
+    return { ...live, prices: [...live.prices, ...extraPrices], models: [...live.models, ...extraModels] };
   }
-
-  if (lastError) setApiStatus("pricing", "fallback", friendlyApiError(lastError));
-  return { ...EMPTY_PRICING, error: lastError ? friendlyApiError(lastError) : "Live pricing API is not configured." };
+  if (display) {
+    setApiStatus("pricing", "snapshot");
+    return display;
+  }
+  const detail = live.error ? friendlyApiError(live.error) : "The live pricing catalog is empty.";
+  setApiStatus("pricing", "fallback", detail);
+  return { ...EMPTY_PRICING, error: detail };
 }
 
 function label(text) {
@@ -957,7 +973,7 @@ function sortPrices(prices) {
 
 function usd(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "-";
-  return `$${value.toFixed(value < 0.1 ? 3 : 2)}`;
+  return `$${new Intl.NumberFormat("en-US", { maximumFractionDigits: 6 }).format(value)}`;
 }
 
 function isNegotiablePrice(value) {
@@ -965,7 +981,7 @@ function isNegotiablePrice(value) {
 }
 
 function tokenPriceLabel(value) {
-  return isNegotiablePrice(value) ? label(NEGOTIABLE_PRICE_LABEL) : `${usd(value)} / ${label("per 1M tokens")}`;
+  return isNegotiablePrice(value) ? label(NEGOTIABLE_PRICE_LABEL) : `${usd(value)} / 1M tokens`;
 }
 
 function summaryPriceLabel(value) {
@@ -1049,7 +1065,7 @@ function renderPricing() {
     updated.textContent = pricingStatus === "loading"
       ? label("Loading live pricing...")
       : state.pricing.updatedAt
-        ? `${label("Updated")} ${state.pricing.updatedAt} · ${state.pricing.currency}`
+        ? `${label("Updated")} ${new Date(state.pricing.updatedAt).toLocaleString("en-GB", { timeZone: "Asia/Shanghai", hour12: false })} CST · ${state.pricing.currency}`
         : label("Live pricing unavailable");
   }
 
@@ -1084,9 +1100,9 @@ function renderPricing() {
           <td><strong>${item.displayName}</strong></td>
           <td><span class="badge ${isText ? "" : "badge-cyan"}">${label(categoryLabel(item.category))}</span></td>
           <td>${item.provider}</td>
-          <td>${isText ? tokenPriceLabel(item.inputPerMillionTokens) : label(NEGOTIABLE_PRICE_LABEL)}</td>
-          <td>${isText ? tokenPriceLabel(item.outputPerMillionTokens) : label(NEGOTIABLE_PRICE_LABEL)}</td>
-          <td><span class="badge">${label("Available")}</span></td>
+          <td>${isText ? tokenPriceLabel(item.inputPerMillionTokens) : item.status === "display_only" ? "—" : label(NEGOTIABLE_PRICE_LABEL)}</td>
+          <td>${isText ? tokenPriceLabel(item.outputPerMillionTokens) : !isNegotiablePrice(item.pricePerVideoSecond) ? `${usd(item.pricePerVideoSecond)} / second` : label(NEGOTIABLE_PRICE_LABEL)}</td>
+          <td><span class="badge">${item.status === "display_only" ? "Display only" : label("Available")}</span></td>
         </tr>
       `;
     }).join("")

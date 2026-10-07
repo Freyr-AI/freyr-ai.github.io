@@ -8,7 +8,7 @@ The site is a static, no-database website for visitors reviewing model pricing a
 
 ## Primary Content
 
-The home Pricing page presents text, image, music, and video model pricing loaded from Freyr's public model info API. Text model prices are normalized from token cost fields; image, music, and video pricing is currently shown as negotiable. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
+The home Pricing page presents text, image, music, and video model pricing loaded from Freyr's public model info API. Text model prices are normalized from token cost fields; media pricing is negotiable unless a unit price is provided. While live pricing is loading, the page displays loading states instead of built-in placeholder pricing.
 
 Current public pricing categories are configured in `/config/model-categories.js`:
 
@@ -26,3 +26,7 @@ The Terms of Use page describes the terms governing access to and use of Freyr A
 ## Important Caveats
 
 Model availability, official pricing, endpoint domains, authentication, API data retention, logging policies, and privacy promises must be confirmed by Freyr before production launch. Static browser code must not expose private API keys, signatures, or cloud-provider credentials.
+
+## Display-only reference catalog
+
+Kimi K3, GLM 5.3, GLM 5.3 Flash, and DeepSeek 4.1 use dated OpenRouter endpoint price medians. DeepSeek 4.1 maps to deepseek/deepseek-v4.1-flash. MiniMax H3 uses the minimax/hailuo-3 video duration SKU. These entries are marked Display only and do not enable inference. /assets/display-pricing.json provides the dated public fallback; /config/display-pricing-sources.json records sources and methodology.
