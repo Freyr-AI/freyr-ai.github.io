@@ -29,4 +29,4 @@ Model availability, official pricing, endpoint domains, authentication, API data
 
 ## Display-only reference catalog
 
-Kimi K3, GLM 5.3, GLM 5.3 Flash, and DeepSeek 4.1 use dated OpenRouter endpoint price medians. DeepSeek 4.1 maps to deepseek/deepseek-v4.1-flash. MiniMax H3 uses the minimax/hailuo-3 video duration SKU. These entries are marked Display only and do not enable inference. /assets/display-pricing.json provides the dated public fallback; /config/display-pricing-sources.json records sources and methodology.
+Kimi K3, GLM 5.3, GLM 5.3 Flash, and DeepSeek V4.1 Flash use dated OpenRouter endpoint price medians. DeepSeek V4.1 Flash maps to deepseek/deepseek-v4.1-flash. MiniMax H3 uses the minimax/hailuo-3 video duration SKU. These entries are marked Display only and do not enable inference. /assets/display-pricing.json provides the dated public fallback; /config/display-pricing-sources.json records sources and methodology.

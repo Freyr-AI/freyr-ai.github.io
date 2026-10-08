@@ -911,7 +911,7 @@
       ]
     },
     {
-      "model_name": "Deepseek 4.1",
+      "model_name": "DeepSeek V4.1 Flash",
       "openrouter_model_id": "deepseek/deepseek-v4.1-flash",
       "url": "https://openrouter.ai/api/v1/models/deepseek/deepseek-v4.1-flash/endpoints",
       "method": "median of listed endpoint prices; each endpoint is one observation; no batch variants",
@@ -920,18 +920,36 @@
         {
           "provider": "Relace",
           "pricing": {
-            "prompt": "0.00000005",
+            "prompt": "0.0000000116",
             "completion": "0.0000012",
-            "input_cache_read": "0.00000002",
+            "input_cache_read": "0.00000001",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "Wafer",
+          "pricing": {
+            "prompt": "0.0000000145",
+            "completion": "0.0000012",
+            "input_cache_read": "0.000000014",
             "discount": 0
           }
         },
         {
           "provider": "Morph",
           "pricing": {
-            "prompt": "0.000000068",
+            "prompt": "0.000000019",
             "completion": "0.000000424",
             "input_cache_read": "0.000000009",
+            "discount": 0
+          }
+        },
+        {
+          "provider": "InferenceNet",
+          "pricing": {
+            "prompt": "0.000000065",
+            "completion": "0.0000012",
+            "input_cache_read": "0.00000003",
             "discount": 0
           }
         },
@@ -963,11 +981,11 @@
           }
         },
         {
-          "provider": "Wafer",
+          "provider": "Ionstream",
           "pricing": {
-            "prompt": "0.000000135",
-            "completion": "0.0000012",
-            "input_cache_read": "0.000000059",
+            "prompt": "0.000000133",
+            "completion": "0.000001175",
+            "input_cache_read": "0.0000000055",
             "discount": 0
           }
         },
@@ -995,33 +1013,6 @@
             "prompt": "0.000000141",
             "completion": "0.000000564",
             "input_cache_read": "0.0000000141",
-            "discount": 0
-          }
-        },
-        {
-          "provider": "InferenceNet",
-          "pricing": {
-            "prompt": "0.000000145",
-            "completion": "0.0000003",
-            "input_cache_read": "0.000000035",
-            "discount": 0
-          }
-        },
-        {
-          "provider": "Ionstream",
-          "pricing": {
-            "prompt": "0.0000001782",
-            "completion": "0.00000115",
-            "input_cache_read": "0.0000000055",
-            "discount": 0
-          }
-        },
-        {
-          "provider": "DigitalOcean",
-          "pricing": {
-            "prompt": "0.00000018",
-            "completion": "0.00000072",
-            "input_cache_read": "0.000000006",
             "discount": 0
           }
         },
@@ -1059,6 +1050,15 @@
             "completion": "0.00000084",
             "input_cache_read": "0.0000000042",
             "discount": 0.3
+          }
+        },
+        {
+          "provider": "DigitalOcean",
+          "pricing": {
+            "prompt": "0.000000225",
+            "completion": "0.0000009",
+            "input_cache_read": "0.000000006",
+            "discount": 0
           }
         },
         {
@@ -1275,7 +1275,8 @@
             "discount": 0
           }
         }
-      ]
+      ],
+      "verifiedAt": "2026-10-08T01:42:20.853721+00:00"
     },
     {
       "model_name": "H3",

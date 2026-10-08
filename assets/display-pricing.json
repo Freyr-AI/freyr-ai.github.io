@@ -1,6 +1,6 @@
 {
   "object": "list",
-  "updatedAt": "2026-10-07T09:27:55.490352+00:00",
+  "updatedAt": "2026-10-08T01:42:20.853721+00:00",
   "currency": "USD",
   "sourceNote": "OpenRouter endpoint price medians. Display entries do not enable model inference.",
   "data": [
@@ -46,14 +46,14 @@
       "cache_read_input_token_cost": "3e-08"
     },
     {
-      "model_name": "Deepseek 4.1",
-      "display_name": "DeepSeek 4.1",
+      "model_name": "DeepSeek V4.1 Flash",
+      "display_name": "DeepSeek V4.1 Flash",
       "provider": "DeepSeek",
       "mode": "chat",
       "status": "display_only",
-      "input_cost_per_token": "2e-07",
-      "output_cost_per_token": "1.2e-06",
-      "cache_read_input_token_cost": "7e-09"
+      "input_cost_per_token": "2.1E-7",
+      "output_cost_per_token": "0.0000012",
+      "cache_read_input_token_cost": "7E-9"
     }
   ]
 }

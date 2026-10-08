@@ -22,4 +22,4 @@ Pricing notes:
 - Token pricing is shown for text models only when the API returns a positive token cost.
 - Zero or unavailable token prices are displayed as `Negotiable`.
 
-Display-only references include Kimi K3, GLM 5.3, MiniMax H3, GLM 5.3 Flash, and DeepSeek 4.1 (OpenRouter DeepSeek V4.1 Flash). Text quotes are endpoint medians per 1M tokens. H3 is quoted per video second. Display entries do not establish inference availability.
+Display-only references include Kimi K3, GLM 5.3, MiniMax H3, GLM 5.3 Flash, and DeepSeek V4.1 Flash. Text quotes are endpoint medians per 1M tokens. H3 is quoted per video second. Display entries do not establish inference availability.

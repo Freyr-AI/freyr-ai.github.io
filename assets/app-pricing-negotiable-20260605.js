@@ -949,7 +949,7 @@ function initModels() {
 
 function priceMatches(item) {
   const categoryMatches = state.priceCategory === "all" || item.category === state.priceCategory;
-  const haystack = [item.modelId, item.displayName, item.category, item.provider].join(" ").toLowerCase();
+  const haystack = [item.modelId, item.displayName, item.category].join(" ").toLowerCase();
   return categoryMatches && haystack.includes(state.priceQuery.trim().toLowerCase());
 }
 
@@ -1085,7 +1085,6 @@ function renderPricing() {
         <td><span></span></td>
         <td><span></span></td>
         <td><span></span></td>
-        <td><span></span></td>
       </tr>
     `).join("");
     applyTranslations();
@@ -1099,14 +1098,13 @@ function renderPricing() {
         <tr>
           <td><strong>${item.displayName}</strong></td>
           <td><span class="badge ${isText ? "" : "badge-cyan"}">${label(categoryLabel(item.category))}</span></td>
-          <td>${item.provider}</td>
           <td>${isText ? tokenPriceLabel(item.inputPerMillionTokens) : item.status === "display_only" ? "—" : label(NEGOTIABLE_PRICE_LABEL)}</td>
           <td>${isText ? tokenPriceLabel(item.outputPerMillionTokens) : !isNegotiablePrice(item.pricePerVideoSecond) ? `${usd(item.pricePerVideoSecond)} / second` : label(NEGOTIABLE_PRICE_LABEL)}</td>
           <td><span class="badge">${item.status === "display_only" ? "Display only" : label("Available")}</span></td>
         </tr>
       `;
     }).join("")
-    : `<tr><td colspan="6">${label(pricingRows.length ? "No pricing rows match the current filters." : "Live pricing is unavailable. Please try again after the API is reachable.")}</td></tr>`;
+    : `<tr><td colspan="5">${label(pricingRows.length ? "No pricing rows match the current filters." : "Live pricing is unavailable. Please try again after the API is reachable.")}</td></tr>`;
 
   applyTranslations();
 }
