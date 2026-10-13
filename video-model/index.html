@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20261003-video-result-r2">
-    <script defer src="app.js?v=20261003-video-result-r2"></script>
+    <link rel="stylesheet" href="styles.css?v=20261013-manual-sr-r1">
+    <script defer src="app.js?v=20261013-manual-sr-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -242,7 +242,10 @@
                 <h3>视频生成完成</h3>
                 <p id="resultSummary"></p>
               </div>
-              <button class="button primary" id="downloadVideo" type="button">下载 MP4</button>
+              <div class="result-actions">
+                <button class="button ghost" id="upscaleVideo" type="button" hidden title="使用此 768P 成片创建独立的超分任务，不重新生成 H3；超分另行计费。">生成 2K 超分</button>
+                <button class="button primary" id="downloadVideo" type="button">下载 MP4</button>
+              </div>
             </div>
             <div id="resultIrPrompt" style="overflow-wrap: anywhere"></div>
           </section>

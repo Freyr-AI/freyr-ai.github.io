@@ -55,6 +55,8 @@ const state = {
   desiredQuality: "768P",
   abortController: null,
   resultObjectUrl: "",
+  resultJob: null,
+  srSubmissionSourceId: "",
   uploadedAssets: new Map(),
   history: loadHistory()
 };
@@ -757,6 +759,15 @@ function setBusy(busy) {
   $("#irProvider").disabled = busy;
   $$('[data-control="prompt-source"] button').forEach((button) => { button.disabled = busy; });
   $("#rebuildIr").disabled = busy;
+  syncUpscaleButton();
+}
+
+function syncUpscaleButton() {
+  const button = $("#upscaleVideo");
+  const source = state.resultJob;
+  button.hidden = !source || source.quality !== "768P";
+  button.disabled = state.busy || state.manualQuerying
+    || state.srSubmissionSourceId === source?.id;
 }
 
 function syncPromptSourceUi() {
@@ -1111,6 +1122,7 @@ async function queryCurrentJob() {
   const controller = state.abortController;
   const button = $("#queryTask");
   state.manualQuerying = true;
+  syncUpscaleButton();
   button.disabled = true;
   button.textContent = "正在查询…";
   try {
@@ -1131,6 +1143,7 @@ async function queryCurrentJob() {
     setDiagnostics({ phase: current.phase, job: current, error: friendlyError(error) });
   } finally {
     state.manualQuerying = false;
+    syncUpscaleButton();
     button.disabled = false;
     button.textContent = "手动查询";
   }
@@ -1313,6 +1326,7 @@ async function createDirectH3Job() {
 
 async function createSrJob(sourceJobId) {
   const model = "FreyrAI/SR-D3-2K";
+  const controller = state.abortController;
   setStatus("正在提交 2K 超分任务", "768P 视频已完成，正在创建独立的 Video SR 任务。", 76);
   const created = await fetchJson(`${API_V1_ROOT}/videos`, {
     method: "POST",
@@ -1320,11 +1334,64 @@ async function createSrJob(sourceJobId) {
     body: JSON.stringify({ model, source_job_id: sourceJobId }),
     signal: state.abortController.signal
   });
-  rememberJob(created, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
+  rememberJob({ ...created, source_job_id: sourceJobId }, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
+  if (state.abortController !== controller) return;
   state.srJob = await pollJob(created, model, "sr");
   const direct = state.preparedSettings?.promptSource === "direct";
   updatePipeline("", direct ? ["assets", "h3", "sr"] : ["assets", "ir", "h3", "sr"], direct ? ["ir"] : []);
   await showCompletedVideo(state.srJob, "2K");
+}
+
+async function upscaleCompletedVideo() {
+  const source = state.resultJob;
+  if (state.busy || state.manualQuerying || source?.quality !== "768P"
+    || source.status !== "completed" || state.srSubmissionSourceId === source.id) return;
+  if (!authIsComplete()) {
+    showFormMessage("请先填写完整的 Request headers，再生成 2K 超分视频。", true);
+    $("#authPanel").hidden = false;
+    return;
+  }
+  setBusy(true);
+  state.abortController = new AbortController();
+  const controller = state.abortController;
+  state.h3Job = { ...source, phase: "h3" };
+  state.currentJob = { ...source, phase: "h3" };
+  updatePipeline("sr", ["h3"], ["assets", "ir"]);
+  try {
+    // Resume a known SR rather than billing another submission for this source.
+    const existing = state.history.find((record) => record.phase === "sr"
+      && record.sourceJobId === source.id && !["failed", "cancelled"].includes(record.status));
+    if (existing) {
+      state.srJob = await pollJob(existing, existing.model, "sr");
+      updatePipeline("", ["h3", "sr"], ["assets", "ir"]);
+      await showCompletedVideo(state.srJob, "2K", existing.model);
+    } else {
+      // A POST is never automatically retried. Keep an uncertain submission
+      // locked until its Job ID is recovered, instead of silently duplicating it.
+      state.srSubmissionSourceId = source.id;
+      await createSrJob(source.id);
+    }
+  } catch (error) {
+    if (state.abortController !== controller) return;
+    const knownSr = state.history.some((record) => record.phase === "sr" && record.sourceJobId === source.id);
+    if (!knownSr && error instanceof ApiError && [400, 401, 403, 404, 413, 415, 422, 429].includes(error.status)) {
+      state.srSubmissionSourceId = "";
+    }
+    reportVideoError(error);
+    if (!knownSr && state.srSubmissionSourceId === source.id) {
+      setStatus("超分提交结果未确认", "768P 视频仍可下载。请先查询超分任务记录确认是否已创建，避免重复提交。", 100);
+    }
+    setDiagnostics({ phase: "manual_sr", source_job_id: source.id, job: state.currentJob, error: friendlyError(error) });
+  } finally {
+    if (state.abortController === controller) {
+      // Once the created Job ID is recorded, a later click can safely resume it.
+      if (state.history.some((record) => record.phase === "sr" && record.sourceJobId === source.id)) {
+        state.srSubmissionSourceId = "";
+      }
+      setBusy(false);
+      setCancelVisible(false);
+    }
+  }
 }
 
 function contentUrl(job, model) {
@@ -1366,6 +1433,8 @@ async function showCompletedVideo(job, quality, model = quality === "2K" ? "Frey
     $("#resultVideo").src = state.resultObjectUrl;
     $("#resultCard").hidden = false;
     $("#resultQuality").textContent = `${quality} output`;
+    state.resultJob = { ...job, model, quality };
+    syncUpscaleButton();
     const cost = Number(job.cost?.total_cost);
     const duration = Number(job.duration_seconds || job.usage?.output_seconds);
     $("#resultSummary").textContent = [
@@ -1413,6 +1482,9 @@ function resetTask() {
   state.srJob = null;
   if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
   state.resultObjectUrl = "";
+  state.resultJob = null;
+  state.srSubmissionSourceId = "";
+  syncUpscaleButton();
   $("#resultVideo").removeAttribute("src");
   $("#resultVideo").load();
   $("#taskView").hidden = true;
@@ -1519,6 +1591,7 @@ function bindEvents() {
   $("#rebuildIr").addEventListener("click", prepareIr);
   $("#cancelTask").addEventListener("click", cancelCurrentJob);
   $("#queryTask").addEventListener("click", queryCurrentJob);
+  $("#upscaleVideo").addEventListener("click", upscaleCompletedVideo);
   $("#resetTask").addEventListener("click", resetTask);
   $("#clearHistory").addEventListener("click", () => {
     state.history = [];
