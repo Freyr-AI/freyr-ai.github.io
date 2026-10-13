@@ -20,3 +20,8 @@ IR Unicode 修复：API JSON 序列化统一处理所有字符串值，包括音
 素材元数据，避免未配对 UTF-16 surrogate 被 JSON.stringify 转成服务端不接受
 的转义。合法中文、emoji、引号和反斜杠保持不变；只替换非法字符，不改接口
 字段、SHA-256或素材二进制内容。资源版本：`20261013-ir-unicode-r1`。
+
+新建任务的“提示词优化 IR”仅显示 `H3Offical-IR`；页面提交时仍发送
+`ir_provider: H3Offical-IR`。旧历史记录保留原 provider 标记和复用能力，
+不下线 OpenH3-IR 后端，也不修改客户 API。页面脚本资源版本：
+`20261013-official-ir-only-r1`。

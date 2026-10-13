@@ -23,6 +23,17 @@ function context() {
   return {ctx, nodes};
 }
 
+test("new IR requests offer only H3Offical-IR", () => {
+  const html = fs.readFileSync(`${__dirname}/index.html`, "utf8");
+  const selector = html.match(/<select id="irProvider"[^>]*>([\s\S]*?)<\/select>/)?.[1];
+  assert.ok(selector);
+  assert.deepEqual([...selector.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]),
+    ["H3Offical-IR"]);
+  const {ctx} = context();
+  const snapshot = vm.runInContext("snapshotIr({id:'new',ir:{prompt:'prompt'}}, {})", ctx);
+  assert.equal(snapshot.provider, "H3Offical-IR");
+});
+
 test("persistent IR uses short requests and reuses the key after a lost POST response", async () => {
   const {ctx} = context();
   const saved = new Map();

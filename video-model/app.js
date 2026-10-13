@@ -441,7 +441,7 @@ function persistHistory() {
 function snapshotIr(brief, settings) {
   const prompt = brief?.ir?.prompt || brief?.ir?.final_prompt || brief?.final_prompt || brief?.prompt;
   return typeof prompt === "string" && prompt ? {
-    prompt, briefId: brief.id, provider: brief.provider || settings?.irProvider || "OpenH3-IR",
+    prompt, briefId: brief.id, provider: brief.provider || settings?.irProvider || "H3Offical-IR",
     inputMode: "ir_brief"
   } : null;
 }
@@ -938,7 +938,7 @@ function renderIrReview(brief) {
   state.irVerified = manifestVerifiable && (state.preparedSettings?.irProvider !== "H3Offical-IR" ||
     (brief?.provider === "H3Offical-IR" && brief?.validation?.passed === true && !degraded));
   $("#irReview").hidden = false;
-  $("#irStatus").textContent = `${state.preparedSettings?.irProvider || "OpenH3-IR"} · ${degraded ? "Degraded · 请仔细核对" : state.irVerified ? "映射一致" : "校验失败，禁止提交"}`;
+  $("#irStatus").textContent = `${state.preparedSettings?.irProvider || "H3Offical-IR"} · ${degraded ? "Degraded · 请仔细核对" : state.irVerified ? "映射一致" : "校验失败，禁止提交"}`;
   $("#irStatus").classList.toggle("warning", degraded || !manifestVerifiable);
   $("#manifestList").innerHTML = rows.map((row) => `
     <div class="manifest-item ${row.matches ? "" : "mismatch"}">
