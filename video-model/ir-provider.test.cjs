@@ -327,3 +327,61 @@ test("malformed UTF-16 prompt text becomes valid Unicode without changing emoji"
   assert.equal(normalized, "A�B�C😀");
   assert.doesNotMatch(JSON.stringify(normalized), /\\\\ud800|\\\\udc00/i);
 });
+
+test("official audio filenames normalize lone surrogates without changing the asset identity", () => {
+  const {ctx} = context();
+  ctx.badName = "林雪\uD800音色\uDC00😀.wav";
+  const payload = vm.runInContext("irAssetPayload({type:'audio',sha256:'abc123',file:{name:badName}},'H3Offical-IR')",ctx);
+  assert.equal(payload.filename,"林雪�音色�😀.wav");
+  assert.equal(payload.sha256,"abc123");
+  assert.equal(payload.kind,"audio");
+  assert.equal("role" in payload,false);
+  assert.equal("note" in payload,false);
+});
+
+test("API JSON sanitizes nested string values on native and fallback Unicode paths", () => {
+  for (const fallback of [false,true]) {
+    const {ctx} = context();
+    if (fallback) vm.runInContext("String.prototype.toWellFormed=undefined",ctx);
+    ctx.payload={intent:"对白\uD800😀",assets:[{filename:"音色\uDC00.wav",note:"原始\\uD800文字",sha256:"hash"}],seconds:5,seed:0};
+    const body=vm.runInContext("stringifyApiPayload(payload)",ctx);
+    const parsed=JSON.parse(body);
+    assert.equal(parsed.intent,"对白�😀");
+    assert.equal(parsed.assets[0].filename,"音色�.wav");
+    assert.equal(parsed.assets[0].note,"原始\\uD800文字");
+    assert.equal(parsed.seconds,5);
+    assert.equal(parsed.seed,0);
+    assert.equal(parsed.intent.isWellFormed(),true);
+    assert.equal(parsed.assets[0].filename.isWellFormed(),true);
+  }
+});
+
+test("legal Unicode API payloads preserve the exact original JSON representation", () => {
+  const {ctx}=context();
+  ctx.payload={intent:'中文😀𠮷 "对白"\n\\路径',assets:[{filename:'林雪👩‍🚀.wav'}],seed:null};
+  assert.equal(vm.runInContext("stringifyApiPayload(payload)",ctx),JSON.stringify(ctx.payload));
+});
+
+test("prepare IR serializes malformed prompt and audio filename safely before submission", async () => {
+  const {ctx,nodes}=context();
+  Object.assign(ctx,{AbortController});
+  ctx.badIntent="场景\uD800中文😀";
+  ctx.badFileName="林雪\uDC00音色.wav";
+  vm.runInContext(`
+    validateInput=()=>''; showFormMessage=()=>{}; updatePipeline=()=>{};
+    setStatus=()=>{}; setJobMeta=()=>{}; renderIrReview=()=>{};
+    numberedAssets=()=>[{type:'audio',sha256:'content-hash',file:{name:badFileName}}];
+    uploadAsset=async asset=>asset;
+    document.querySelector('#intentInput').value=badIntent;
+    document.querySelector('#irProvider').value='H3Offical-IR';
+    document.querySelector('#secondsInput').value='5';
+    document.querySelector('#ratioInput').value='16:9';
+    fetchPersistentIr=async body=>{globalThis.submitted=JSON.parse(body);return {id:'irjob_test'};};
+  `,ctx);
+  await vm.runInContext("prepareIr()",ctx);
+  assert.equal(ctx.submitted.intent,"场景�中文😀");
+  assert.equal(ctx.submitted.assets[0].filename,"林雪�音色.wav");
+  assert.equal(ctx.submitted.assets[0].sha256,"content-hash");
+  assert.equal(vm.runInContext("state.brief.id",ctx),"irjob_test");
+  assert.equal(nodes.get("#prepareButton").disabled,false);
+});

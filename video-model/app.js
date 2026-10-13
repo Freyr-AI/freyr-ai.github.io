@@ -86,6 +86,14 @@ function toWellFormedText(value) {
   });
 }
 
+// JSON.stringify escapes lone UTF-16 surrogates instead of removing them.
+// Strict UTF-8 JSON decoders can still reject those escapes after parsing.
+// Normalize every string value, including filenames nested in IR assets.
+function stringifyApiPayload(payload) {
+  return JSON.stringify(payload, (_key, value) =>
+    typeof value === "string" ? toWellFormedText(value) : value);
+}
+
 function parseHeaderLines(value) {
   return String(value || "")
     .split(/\r?\n/)
@@ -566,7 +574,7 @@ async function reuseHistoryIr(record, button) {
     const created = await fetchJson(`${API_V1_ROOT}/videos`, {
       method: "POST",
       headers: authHeaders({ json: true }),
-      body: JSON.stringify({ model, brief_id: briefId }),
+      body: stringifyApiPayload({ model, brief_id: briefId }),
       signal: state.abortController.signal
     });
     rememberJob(created, model, "h3", record.irSnapshot);
@@ -952,7 +960,7 @@ function renderIrReview(brief) {
 
 function irAssetPayload(asset, provider) {
   return {sha256: asset.sha256, kind: asset.type,
-    ...(provider === "H3Offical-IR" && asset.type === "audio" ? {filename: asset.file.name} : {})};
+    ...(provider === "H3Offical-IR" && asset.type === "audio" ? {filename: toWellFormedText(asset.file.name)} : {})};
 }
 
 async function prepareIr() {
@@ -1006,7 +1014,7 @@ async function prepareIr() {
       creativity: "restrained",
       ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
     };
-    const briefBody = JSON.stringify(briefPayload);
+    const briefBody = stringifyApiPayload(briefPayload);
     state.brief = await fetchPersistentIr(briefBody, state.abortController.signal);
     updatePipeline("", ["assets", "ir"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
     setStatus("IR 方案已生成", "请核对素材标签、类型与 SHA-256，确认后再提交 H3。", 50, "success");
@@ -1210,7 +1218,7 @@ async function createH3Job() {
       // The browser CORS policy for /videos does not currently allow the
       // optional Idempotency-Key header. This UI never retries a POST.
       headers: authHeaders({ json: true }),
-      body: JSON.stringify(payload),
+      body: stringifyApiPayload(payload),
       signal: state.abortController.signal
     });
     rememberJob(created, model, "h3", submittedIr);
@@ -1295,7 +1303,7 @@ async function createDirectH3Job() {
       conditions,
       ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
     };
-    const body = JSON.stringify(payload);
+    const body = stringifyApiPayload(payload);
     if (new Blob([body]).size > MAX_DIRECT_JSON_BYTES) {
       throw new Error("Base64 编码后的请求超过 88 MiB，请压缩或减少参考素材。 ");
     }
@@ -1331,7 +1339,7 @@ async function createSrJob(sourceJobId) {
   const created = await fetchJson(`${API_V1_ROOT}/videos`, {
     method: "POST",
     headers: authHeaders({ json: true }),
-    body: JSON.stringify({ model, source_job_id: sourceJobId }),
+    body: stringifyApiPayload({ model, source_job_id: sourceJobId }),
     signal: state.abortController.signal
   });
   rememberJob({ ...created, source_job_id: sourceJobId }, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
