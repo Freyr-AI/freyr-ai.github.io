@@ -1251,10 +1251,15 @@ async function createDirectH3Job() {
   }
   if (state.busy) return;
 
+  // A repeat is a new generation, just like "New task", but keeps the form
+  // and File objects. Release the previous video and all previous job state.
+  resetTask();
   showFormMessage();
   setBusy(true);
-  state.abortController = new AbortController();
+  const controller = new AbortController();
+  state.abortController = controller;
   state.brief = null;
+  state.irVerified = false;
   state.preparedAssets = [];
   state.currentJob = null;
   state.h3Job = null;
@@ -1271,50 +1276,58 @@ async function createDirectH3Job() {
     seed: seedValue ? Number(seedValue) : null
   };
   const prompt = toWellFormedText($("#intentInput").value.trim());
+  const assets = numberedAssets();
+  const settings = { ...state.preparedSettings };
   const submittedIr = snapshotDirectPrompt(prompt);
+  let submitting = false;
   $("#irReview").hidden = true;
   $("#resultCard").hidden = true;
   updatePipeline("assets", [], ["ir", ...(state.desiredQuality === "2K" ? [] : ["sr"])]);
   setStatus("正在读取参考素材", "素材只用于本次 H3 任务，不会调用 IR 服务。", 5);
 
   try {
-    const assets = numberedAssets();
     const conditions = [];
     for (let index = 0; index < assets.length; index += 1) {
       const asset = assets[index];
       setStatus("正在准备 H3 素材",
         `${assetTypeLabel(asset.type)} ${asset.number} · ${asset.file.name}`,
         5 + ((index + 1) / assets.length) * 35);
+      const uri = await fileToDataUri(asset.file);
+      if (state.abortController !== controller) return;
       conditions.push({
         type: asset.type,
         role: "reference",
-        uri: await fileToDataUri(asset.file)
+        uri
       });
     }
 
     updatePipeline("h3", ["assets"], ["ir", ...(state.preparedSettings.quality === "2K" ? [] : ["sr"])]);
     setStatus("正在提交 H3 任务", "使用自定义 IR Prompt 和当前素材顺序创建视频任务。", 51);
-    const model = state.preparedSettings.model;
+    const model = settings.model;
     const payload = {
       model,
       prompt,
-      seconds: state.preparedSettings.seconds,
-      generation_config: { resolution: "768P", ratio: state.preparedSettings.ratio },
+      seconds: settings.seconds,
+      generation_config: { resolution: "768P", ratio: settings.ratio },
       conditions,
-      ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
+      ...(settings.seed !== null ? { seed: settings.seed } : {})
     };
     const body = stringifyApiPayload(payload);
     if (new Blob([body]).size > MAX_DIRECT_JSON_BYTES) {
       throw new Error("Base64 编码后的请求超过 88 MiB，请压缩或减少参考素材。 ");
     }
+    submitting = true;
     const created = await fetchJson(`${API_V1_ROOT}/videos`, {
       method: "POST",
       headers: authHeaders({ json: true }),
       body,
-      signal: state.abortController.signal
+      signal: controller.signal
     });
     rememberJob(created, model, "h3", submittedIr);
-    state.h3Job = await pollJob(created, model, "h3");
+    if (state.abortController !== controller) return;
+    const completed = await pollJob(created, model, "h3");
+    if (state.abortController !== controller) return;
+    state.h3Job = completed;
     updatePipeline(state.preparedSettings.quality === "2K" ? "sr" : "",
       ["assets", "h3"], ["ir", ...(state.preparedSettings.quality === "2K" ? [] : ["sr"])]);
     if (state.preparedSettings.quality === "2K") {
@@ -1323,12 +1336,20 @@ async function createDirectH3Job() {
       await showCompletedVideo(state.h3Job, "768P");
     }
   } catch (error) {
-    if (error?.name === "AbortError" && !state.abortController) return;
-    reportVideoError(error);
+    if (state.abortController !== controller) return;
+    if (submitting && !state.currentJob?.id && !(error instanceof ApiError)) {
+      // A lost POST response is not evidence of a failed backend job. Do not
+      // automatically resend a potentially accepted, billable generation.
+      setStatus("提交结果未确认", "提交连接中断，尚未收到新 Job ID；这不代表模型生成失败。请先核对任务记录，确认未创建任务后再手动生成。", 0);
+    } else {
+      reportVideoError(error);
+    }
     setDiagnostics({ phase: "direct_h3", job: state.currentJob, error: friendlyError(error) });
   } finally {
-    setBusy(false);
-    setCancelVisible(false);
+    if (state.abortController === controller) {
+      setBusy(false);
+      setCancelVisible(false);
+    }
   }
 }
 

@@ -7,7 +7,8 @@ function context() {
   const nodes = new Map();
   const document = {
     querySelector(selector) {
-      if (!nodes.has(selector)) nodes.set(selector, {classList: {toggle() {}}, value: "", disabled: false});
+      if (!nodes.has(selector)) nodes.set(selector, {classList: {toggle() {}}, value: "", disabled: false,
+        removeAttribute() {}, load() {}});
       return nodes.get(selector);
     },
     querySelectorAll() { return []; }
