@@ -10,7 +10,7 @@ const MAX_TOTAL_BYTES = 60 * 1024 * 1024;
 const MAX_DIRECT_RAW_BYTES = 60 * 1024 * 1024;
 const MAX_DIRECT_JSON_BYTES = 88 * 1024 * 1024;
 const IR_INTENT_MAX_CHARS = 7000;
-const DIRECT_PROMPT_MAX_CHARS = 30000;
+const DIRECT_PROMPT_MAX_CHARS = 60000;
 const H3_POLL_BASE_MS = 10_000;
 const SR_POLL_BASE_MS = 3_000;
 const JOB_TIMEOUT_MS = 40 * 60 * 1000;
@@ -796,7 +796,7 @@ function syncPromptSourceUi() {
     ? "图片最多 9 张，视频和音频各 3 个；浏览器直传素材合计不超过 60 MiB"
     : "图片最多 9 张，视频和音频各 3 个；IR 素材合计不超过 60 MiB";
   $("#promptSourceHelp").textContent = direct
-    ? "跳过 IR 服务，按当前 Prompt 和素材顺序直接创建 H3 任务。"
+    ? `跳过 IR 服务，按当前 Prompt 和素材顺序直接创建 H3 任务。最多 ${DIRECT_PROMPT_MAX_CHARS.toLocaleString("en-US")} 字符；模型仍会检查提示词与素材合计的 token 容量。`
     : "先生成 IR 方案，核对映射后再提交 H3。";
   $("#prepareButtonText").textContent = direct ? "直接生成 H3 视频" : "生成 IR 方案";
   $("#submitNote").textContent = direct

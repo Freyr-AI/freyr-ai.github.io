@@ -328,9 +328,42 @@ test("direct prompt mode updates labels and hides the IR provider", () => {
   vm.runInContext("document.querySelector('#promptSourceInput').value = 'direct'; renderIrResume = () => {}; syncPromptSourceUi()", ctx);
   assert.equal(nodes.get("#irProviderFieldset").hidden, true);
   assert.equal(nodes.get("#prepareButtonText").textContent, "直接生成 H3 视频");
-  assert.equal(nodes.get("#intentInput").maxLength, 30000);
+  assert.equal(nodes.get("#intentInput").maxLength, 60000);
+  assert.equal(nodes.get("#promptCount").textContent, "0 / 60000");
+  assert.match(nodes.get("#promptSourceHelp").textContent, /60,000/);
   assert.match(nodes.get("#assetHelp").textContent, /<Picture N>/);
   assert.match(nodes.get("#assetLimitHelp").textContent, /60 MiB/);
+});
+
+test("direct prompts accept 7001 through 60000 characters without calling IR", () => {
+  const {ctx} = context();
+  vm.runInContext(`
+    authIsComplete = () => true;
+    $('#promptSourceInput').value = 'direct';
+    state.assets = [{file:{name:'reference.png',type:'image/png',size:10}}];
+  `, ctx);
+  for (const length of [7001, 30001, 60000]) {
+    ctx.promptText = '文'.repeat(length);
+    assert.equal(vm.runInContext("$('#intentInput').value = promptText; validateInput()", ctx), "");
+  }
+  ctx.promptText = '文'.repeat(60001);
+  assert.match(vm.runInContext("$('#intentInput').value = promptText; validateInput()", ctx), /60000/);
+});
+
+test("switching prompt modes restores the separate limits without truncating text", () => {
+  const {ctx, nodes} = context();
+  vm.runInContext(`
+    renderIrResume = () => {};
+    $('#intentInput').value = '文'.repeat(30001);
+    $('#promptSourceInput').value = 'direct'; syncPromptSourceUi();
+  `, ctx);
+  assert.equal(nodes.get('#intentInput').maxLength, 60000);
+  vm.runInContext("$('#promptSourceInput').value = 'ir'; syncPromptSourceUi()", ctx);
+  assert.equal(nodes.get('#intentInput').maxLength, 7000);
+  assert.equal(nodes.get('#intentInput').value.length, 30001);
+  assert.equal(nodes.get('#promptCount').textContent, '30001 / 7000');
+  vm.runInContext("$('#promptSourceInput').value = 'direct'; syncPromptSourceUi()", ctx);
+  assert.equal(nodes.get('#promptCount').textContent, '30001 / 60000');
 });
 
 test("malformed UTF-16 prompt text becomes valid Unicode without changing emoji", () => {
