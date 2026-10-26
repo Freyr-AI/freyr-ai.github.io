@@ -9,7 +9,7 @@
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
     <link rel="stylesheet" href="styles.css?v=20261026-history-preview-r1">
-    <script defer src="app.js?v=20261026-history-preview-r1"></script>
+    <script defer src="app.js?v=20261026-result-recovery-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -208,6 +208,7 @@
             <div class="job-meta" id="jobMeta"></div>
             <div class="job-actions">
               <button class="button ghost compact" id="queryTask" type="button" title="只查询已有任务，不会重新生成或取消任务" hidden>手动查询</button>
+              <button class="button ghost compact" id="reloadResult" type="button" title="只重试读取已完成的视频文件，不创建新任务" hidden>重新加载视频</button>
               <button class="button danger compact" id="cancelTask" type="button" hidden>取消排队任务</button>
             </div>
           </div>

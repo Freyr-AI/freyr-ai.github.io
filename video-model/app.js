@@ -68,6 +68,7 @@ const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(sel
 state.stepTimings = {};
 state.timingJobs = {};
 state.historyPreview = null;
+state.resultLoad = null;
 
 function timestampMs(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -896,7 +897,10 @@ async function sha256Hex(file) {
 function setBusy(busy) {
   state.busy = busy;
   if (!busy) {
-    for (const key of Object.keys(state.stepTimings)) endStepTiming(key);
+    for (const key of Object.keys(state.stepTimings)) {
+      if (state.resultLoad && ["h3Download", "srDownload"].includes(key)) continue;
+      endStepTiming(key);
+    }
   }
   $("#prepareButton").disabled = busy;
   $("#confirmGenerate").disabled = busy || !state.brief?.id || !state.irVerified;
@@ -967,6 +971,7 @@ function setStatus(title, detail, percent = 0, type = "") {
 
 function setJobMeta(job, label) {
   $("#queryTask").hidden = !job?.id;
+  $("#reloadResult").hidden = String(job?.status).toLowerCase() !== "completed";
   if (!job) {
     $("#jobMeta").innerHTML = "";
     return;
@@ -1284,10 +1289,10 @@ async function queryCurrentJob() {
     rememberJob(job, current.model, current.phase);
     renderJobStatus(state.currentJob);
     setDiagnostics({ phase: current.phase, job: state.currentJob });
-    // The active generation flow owns result loading and any subsequent SR.
-    // A manual recovery never creates another task, including an SR task.
-    if (!state.busy && String(job.status).toLowerCase() === "completed") {
-      await showCompletedVideo(job, current.phase === "sr" ? "2K" : "768P", current.model);
+    // A completed task may still be busy downloading. Manual recovery takes
+    // over that GET without cancelling generation or creating H3/SR tasks.
+    if (String(job.status).toLowerCase() === "completed") {
+      await showCompletedVideo(job, current.phase === "sr" ? "2K" : "768P", current.model, {force:true});
     }
   } catch (error) {
     if (state.currentJob?.id !== current.id || state.abortController !== controller) return;
@@ -1603,19 +1608,34 @@ async function fetchVideoBlob(job, model, signal) {
   }
 }
 
-async function showCompletedVideo(job, quality, model = quality === "2K" ? "FreyrAI/SR-D3-2K" : state.preparedSettings?.model) {
+async function reloadCurrentVideo() {
+  const job = state.currentJob;
+  if (!job?.id || String(job.status).toLowerCase() !== "completed") return;
+  return showCompletedVideo(job, job.phase === "sr" ? "2K" : "768P", job.model, {force:true});
+}
+
+function showCompletedVideo(job, quality, model = quality === "2K" ? "FreyrAI/SR-D3-2K" : state.preparedSettings?.model, {force=false} = {}) {
   const controller = state.abortController;
+  const previous = state.resultLoad;
+  if (!force && previous?.id === job.id && previous.model === model && previous.owner === controller) return previous.promise;
+  previous?.controller.abort();
+  const load = {id:job.id, model, owner:controller, controller:new AbortController()};
+  state.resultLoad = load;
+  const isCurrent = () => state.resultLoad === load && state.abortController === controller && state.currentJob?.id === job.id;
+  const downloadTimingKey = quality === "2K" ? "srDownload" : "h3Download";
+  const signal = controller?.signal ? AbortSignal.any([controller.signal, load.controller.signal]) : load.controller.signal;
+  load.promise = (async () => {
   try {
-    setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
+    setStatus("视频已生成，正在加载成片", "正在读取已有视频文件；若连接停滞，可点击“重新加载视频”。不会重新生成。", 100);
     setJobMeta(job, quality === "2K" ? "Video SR" : "MiniMax H3");
-    const downloadTimingKey = quality === "2K" ? "srDownload" : "h3Download";
     startStepTiming(downloadTimingKey, `${quality} 结果加载（浏览器）`);
-    const blob = await fetchVideoBlob(job, model, controller?.signal);
-    if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
+    const blob = await fetchVideoBlob(job, model, signal);
+    if (!isCurrent()) return;
     endStepTiming(downloadTimingKey);
     if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
     state.resultObjectUrl = URL.createObjectURL(blob);
     $("#resultVideo").src = state.resultObjectUrl;
+    $("#resultVideo").load?.();
     $("#resultCard").hidden = false;
     $("#resultQuality").textContent = `${quality} output`;
     state.resultJob = { ...job, model, quality };
@@ -1629,12 +1649,20 @@ async function showCompletedVideo(job, quality, model = quality === "2K" ? "Frey
     ].filter(Boolean).join(" · ");
     $("#resultIrPrompt").innerHTML = irSnapshotMarkup(state.history.find((record) => record.id === job.id)?.irSnapshot);
     $("#downloadVideo").dataset.filename = `${job.id || "freyr-minimax-h3"}-${quality.toLowerCase()}.mp4`;
+    setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
     setDiagnostics({ h3_job: state.h3Job, sr_job: state.srJob });
   } catch (error) {
-    if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
-    setStatus("视频已生成，结果加载失败", `${friendlyError(error)}。可点击“手动查询”重新加载，或在历史记录中下载。`, 100);
+    if (!isCurrent()) return;
+    setStatus("视频已生成，结果加载失败", `${friendlyError(error)}。点击“重新加载视频”只重试成片下载，也可手动查询或在历史记录中预览。不会重新生成。`, 100);
     setDiagnostics({ phase: "video_content", job, error: friendlyError(error) });
+  } finally {
+    if (isCurrent()) {
+      endStepTiming(downloadTimingKey);
+      state.resultLoad = null;
+    }
   }
+  })();
+  return load.promise;
 }
 
 async function cancelCurrentJob() {
@@ -1657,6 +1685,8 @@ async function cancelCurrentJob() {
 }
 
 function resetTask() {
+  state.resultLoad?.controller.abort();
+  state.resultLoad = null;
   state.abortController?.abort();
   state.abortController = null;
   state.brief = null;
@@ -1779,6 +1809,7 @@ function bindEvents() {
   $("#rebuildIr").addEventListener("click", prepareIr);
   $("#cancelTask").addEventListener("click", cancelCurrentJob);
   $("#queryTask").addEventListener("click", queryCurrentJob);
+  $("#reloadResult").addEventListener("click", reloadCurrentVideo);
   $("#upscaleVideo").addEventListener("click", upscaleCompletedVideo);
   $("#resetTask").addEventListener("click", resetTask);
   $("#clearHistory").addEventListener("click", () => {

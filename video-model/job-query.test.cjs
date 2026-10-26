@@ -116,7 +116,7 @@ test("manual recovery updates the result and history without creating H3 or SR",
   }
 });
 
-test("manual query during polling does not duplicate result loading or regress a terminal result", async () => {
+test("manual query during polling recovers completed content even while generation is busy", async () => {
   const {ctx} = context();
   vm.runInContext(`state.busy=true; globalThis.loads=0; globalThis.queries=0;
     showCompletedVideo=async()=>{loads++;};
@@ -126,7 +126,7 @@ test("manual query during polling does not duplicate result loading or regress a
   const result = await vm.runInContext("pollJob(initial,initial.model,'h3')", ctx);
   assert.equal(result.status, "completed");
   assert.equal(ctx.queries, 1);
-  assert.equal(ctx.loads, 0);
+  assert.equal(ctx.loads, 1);
 });
 
 test("manual transient failure retains the job and last known progress", async () => {
@@ -215,4 +215,83 @@ test("automatic waiting timeout leaves the manual query available", async () => 
   vm.runInContext("reportVideoError(new Error('等待超过 40 分钟'))", ctx);
   assert.equal(nodes.get("#queryTask").hidden, false);
   assert.match(ctx.updates.at(-1)[1], /手动查询/);
+});
+
+test("manual recovery supersedes a stalled automatic download without aborting generation", async () => {
+  const {ctx,nodes}=context();
+  vm.runInContext(`
+    state.busy=true; state.currentJob.status='completed';
+    globalThis.owner=state.abortController;globalThis.downloadSignals=[];globalThis.createdBlobs=0;
+    globalThis.URL={createObjectURL:()=> 'blob:recovered-'+(++createdBlobs),revokeObjectURL:()=>{}};
+    fetchJson=async(url,options)=>{
+      if(options.method) throw new Error('No mutation allowed');
+      return {id:'vid_test',status:'completed',progress:100};
+    };
+    fetchVideoBlob=async(job,model,signal)=>{
+      downloadSignals.push(signal);
+      if(downloadSignals.length===1) return new Promise(resolve=>{globalThis.finishOld=resolve;});
+      return {};
+    };
+  `,ctx);
+  const automatic=vm.runInContext(`showCompletedVideo(state.currentJob,'768P',state.currentJob.model)`,ctx);
+  assert.equal(nodes.get('#statusTitle').textContent,'视频已生成，正在加载成片');
+  await vm.runInContext('queryCurrentJob()',ctx);
+  assert.equal(ctx.downloadSignals.length,2);
+  assert.equal(ctx.downloadSignals[0].aborted,true);
+  assert.equal(vm.runInContext('owner.signal.aborted',ctx),false);
+  assert.equal(nodes.get('#resultVideo').src,'blob:recovered-1');
+  assert.equal(nodes.get('#statusTitle').textContent,'视频生成完成');
+  ctx.finishOld({}); await automatic;
+  assert.equal(ctx.createdBlobs,1,'A stale download must not overwrite recovered bytes');
+  assert.equal(nodes.get('#resultVideo').src,'blob:recovered-1');
+});
+
+test("reload button reads completed content directly even if status querying is busy", async()=>{
+  const {ctx,nodes}=context();
+  vm.runInContext(`
+    state.currentJob.status='completed';state.busy=true;state.manualQuerying=true;
+    globalThis.calls=0;
+    globalThis.URL={createObjectURL:()=> 'blob:direct-recovery',revokeObjectURL:()=>{}};
+    fetchVideoBlob=async()=>{calls++;return {};};
+    fetchJson=()=>{throw new Error('Direct recovery needs no status request or POST');};
+  `,ctx);
+  await vm.runInContext('reloadCurrentVideo()',ctx);
+  assert.equal(ctx.calls,1);
+  assert.equal(nodes.get('#resultVideo').src,'blob:direct-recovery');
+  assert.equal(nodes.get('#reloadResult').hidden,false);
+});
+
+test("automatic completion shares one download and retries after a failed content read", async()=>{
+  const {ctx,nodes}=context();
+  vm.runInContext(`
+    state.currentJob.status='completed';globalThis.calls=0;
+    fetchVideoBlob=()=>{calls++;return new Promise((resolve,reject)=>{globalThis.fail=reject;});};
+  `,ctx);
+  const first=vm.runInContext(`showCompletedVideo(state.currentJob,'768P',state.currentJob.model)`,ctx);
+  const second=vm.runInContext(`showCompletedVideo(state.currentJob,'768P',state.currentJob.model)`,ctx);
+  assert.equal(first,second);
+  ctx.fail(new TypeError('Failed to fetch'));await first;
+  assert.equal(nodes.get('#statusTitle').textContent,'视频已生成，结果加载失败');
+  assert.equal(vm.runInContext('state.currentJob.status',ctx),'completed');
+  vm.runInContext(`
+    globalThis.URL={createObjectURL:()=> 'blob:retry',revokeObjectURL:()=>{}};
+    fetchVideoBlob=async()=>{calls++;return {};};
+  `,ctx);
+  await vm.runInContext('reloadCurrentVideo()',ctx);
+  assert.equal(ctx.calls,2);
+  assert.equal(nodes.get('#resultVideo').src,'blob:retry');
+});
+
+test("a cancelled old result load cannot populate a different task's player", async()=>{
+  const {ctx,nodes}=context();
+  vm.runInContext(`
+    state.currentJob.status='completed';globalThis.creations=0;
+    globalThis.URL={createObjectURL:()=>{creations++;return 'blob:stale';},revokeObjectURL:()=>{}};
+    fetchVideoBlob=()=>new Promise(resolve=>{globalThis.finish=resolve;});
+  `,ctx);
+  const old=vm.runInContext(`showCompletedVideo(state.currentJob,'768P',state.currentJob.model)`,ctx);
+  vm.runInContext(`state.currentJob={id:'different',status:'queued'};state.abortController=new AbortController();`,ctx);
+  ctx.finish({});await old;
+  assert.equal(ctx.creations,0);
+  assert.equal(nodes.get('#resultVideo')?.src,undefined);
 });
