@@ -64,6 +64,80 @@ const state = {
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(selector));
 
+// Server timestamps, not polling intervals, own queue and processing durations.
+state.stepTimings = {};
+state.timingJobs = {};
+
+function timestampMs(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value * 1000 : Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function jobDurations(job, now = Date.now()) {
+  const created = timestampMs(job?.created_at);
+  const started = timestampMs(job?.started_at);
+  const completed = timestampMs(job?.completed_at);
+  const status = String(job?.status).toLowerCase();
+  const terminal = TERMINAL_STATUSES.has(status) || status === "expired";
+  const span = (from, to) => from !== null && to !== null && to >= from ? (to - from) / 1000 : null;
+  return {
+    queue: span(created, started ?? (!terminal && ["queued", "retrying"].includes(status) ? now : null)),
+    processing: started === null ? null : span(started, completed ?? (terminal ? null : now)),
+    total: span(created, completed ?? (terminal ? null : now)),
+    terminal
+  };
+}
+
+function durationText(seconds) {
+  if (!Number.isFinite(seconds)) return "未提供";
+  return seconds < 60 ? `${seconds.toFixed(1)} 秒`
+    : `${Math.floor(seconds / 60)} 分 ${(seconds % 60).toFixed(1)} 秒`;
+}
+
+function startStepTiming(key, label) {
+  state.stepTimings[key] = { label, started: Date.now(), ended: null };
+  renderStepTimings();
+}
+
+function endStepTiming(key) {
+  const step = state.stepTimings[key];
+  if (step && step.ended === null) step.ended = Date.now();
+  renderStepTimings();
+}
+
+function captureJobTiming(job, phase) {
+  if (!job?.id) return;
+  const previous = state.timingJobs[phase];
+  state.timingJobs[phase] = previous?.id === job.id ? { ...previous, ...job } : { ...job };
+  renderStepTimings();
+}
+
+function timingRows(job, label) {
+  const timing = jobDurations(job);
+  const running = !timing.terminal;
+  const queueActive = running && timestampMs(job.started_at) === null;
+  return [
+    [`${label} 排队`, durationText(timing.queue) + (queueActive ? " · 等待中" : "")],
+    [`${label} 处理`, durationText(timing.processing) + (running && !queueActive ? " · 进行中" : "")],
+    [`${label} 总计`, durationText(timing.total) + (running ? " · 进行中" : "")]
+  ];
+}
+
+function renderStepTimings() {
+  const panel = $("#stepTimings");
+  const list = $("#stepTimingList");
+  if (!panel || !list) return;
+  const rows = Object.values(state.stepTimings).map(step => [step.label,
+    durationText(((step.ended ?? Date.now()) - step.started) / 1000)
+      + (step.ended === null ? " · 进行中" : "")]);
+  for (const [phase, label] of [["ir", "IR"], ["h3", "H3"], ["sr", "2K 超分"]]) {
+    if (state.timingJobs[phase]) rows.push(...timingRows(state.timingJobs[phase], label));
+  }
+  panel.hidden = !rows.length;
+  list.innerHTML = rows.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -288,6 +362,7 @@ async function pollPersistentIr(taskId, signal) {
       await delay(3000, signal);
       continue;
     }
+    captureJobTiming(task, "ir");
     if (task.status === "completed") {
       try {
         return await irShortRequest(`${url}/result`, { headers: authHeaders(), cache: "no-store" }, signal, 0);
@@ -478,6 +553,11 @@ function rememberJob(job, model, phase, irSnapshot = null) {
     ratio: settings.ratio || previous.ratio || "",
     sourceJobId: phase === "sr" ? (job.source_job_id || state.h3Job?.id || previous.sourceJobId || "") : "",
     createdAt: previous.createdAt || job.created_at || new Date().toISOString(),
+    serverTiming: {
+      ...previous.serverTiming,
+      ...Object.fromEntries(["created_at", "started_at", "completed_at"].filter(key => job[key] != null).map(key => [key, job[key]])),
+      status: job.status || previous.status
+    },
     updatedAt: new Date().toISOString()
   };
   state.history = [record, ...state.history.filter((item) => item.id !== record.id)].slice(0, MAX_HISTORY_ITEMS);
@@ -519,6 +599,7 @@ function renderHistory() {
           <strong>${escapeHtml(record.phase === "sr" ? "2K 超分" : "H3 生成")} · ${escapeHtml(record.id)}</strong>
           <span>${escapeHtml(details)}</span>
           <small>${escapeHtml(record.model)}</small>
+          ${record.serverTiming ? `<small>${timingRows(record.serverTiming, record.phase === "sr" ? "超分" : "H3").map(([label, value]) => escapeHtml(`${label} ${value}`)).join(" · ")}</small>` : ""}
         </div>
         <span class="history-status">${escapeHtml(historyStatusLabel(record.status))}</span>
         <div class="history-actions">
@@ -762,6 +843,9 @@ async function sha256Hex(file) {
 
 function setBusy(busy) {
   state.busy = busy;
+  if (!busy) {
+    for (const key of Object.keys(state.stepTimings)) endStepTiming(key);
+  }
   $("#prepareButton").disabled = busy;
   $("#confirmGenerate").disabled = busy || !state.brief?.id || !state.irVerified;
   $("#irProvider").disabled = busy;
@@ -826,6 +910,7 @@ function setStatus(title, detail, percent = 0, type = "") {
   $("#statusPercent").textContent = `${Math.max(0, Math.min(100, Math.round(percent)))}%`;
   $("#progressBar").style.width = `${Math.max(0, Math.min(100, percent))}%`;
   $("#statusCard").className = `status-card ${type}`.trim();
+  renderStepTimings();
 }
 
 function setJobMeta(job, label) {
@@ -840,6 +925,7 @@ function setJobMeta(job, label) {
     job.status && ["状态", job.status],
     job.current_stage && ["处理", job.current_stage]
   ].filter(Boolean);
+  captureJobTiming(job, label === "Video SR" || job.phase === "sr" ? "sr" : "h3");
   $("#jobMeta").innerHTML = entries.map(([name, value]) => `<span>${escapeHtml(name)}: ${escapeHtml(scrubSensitiveText(value))}</span>`).join("");
 }
 
@@ -995,6 +1081,9 @@ async function prepareIr() {
   $("#resultCard").hidden = true;
   updatePipeline("assets", [], state.desiredQuality === "2K" ? [] : ["sr"]);
   setStatus("正在准备参考素材", "计算内容 SHA-256 并上传到 IR 素材缓存。", 2);
+  state.stepTimings = {};
+  state.timingJobs = {};
+  startStepTiming("assets", "素材准备与上传（浏览器）");
 
   try {
     const assets = numberedAssets();
@@ -1002,6 +1091,8 @@ async function prepareIr() {
       state.preparedAssets.push(await uploadAsset(assets[index], index, assets.length));
     }
 
+    endStepTiming("assets");
+    startStepTiming("irRequest", "IR 请求至结果（含网络）");
     updatePipeline("ir", ["assets"], state.desiredQuality === "2K" ? [] : ["sr"]);
     setStatus("正在生成 IR 方案", "IR 会根据创作意图编排最终提示词和素材映射。", 42);
     const briefPayload = {
@@ -1016,6 +1107,7 @@ async function prepareIr() {
     };
     const briefBody = stringifyApiPayload(briefPayload);
     state.brief = await fetchPersistentIr(briefBody, state.abortController.signal);
+    endStepTiming("irRequest");
     updatePipeline("", ["assets", "ir"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
     setStatus("IR 方案已生成", "请核对素材标签、类型与 SHA-256，确认后再提交 H3。", 50, "success");
     renderIrReview(state.brief);
@@ -1188,6 +1280,7 @@ async function pollJob(initialJob, model, phase) {
   }
   state.currentJob = { ...job, model, phase };
   rememberJob(job, model, phase);
+  captureJobTiming(job, phase);
   setCancelVisible(false);
   if (String(job.status).toLowerCase() !== "completed") {
     const detail = job.error?.message || job.error?.code || `任务状态：${job.status}`;
@@ -1213,6 +1306,7 @@ async function createH3Job() {
       brief_id: state.brief.id,
       ...(state.preparedSettings.seed !== null ? { seed: state.preparedSettings.seed } : {})
     };
+    startStepTiming("h3Submit", "H3 提交（含上传与网络）");
     const created = await fetchJson(`${API_V1_ROOT}/videos`, {
       method: "POST",
       // The browser CORS policy for /videos does not currently allow the
@@ -1221,6 +1315,7 @@ async function createH3Job() {
       body: stringifyApiPayload(payload),
       signal: state.abortController.signal
     });
+    endStepTiming("h3Submit");
     rememberJob(created, model, "h3", submittedIr);
     state.h3Job = await pollJob(created, model, "h3");
     updatePipeline(state.preparedSettings.quality === "2K" ? "sr" : "", ["assets", "ir", "h3"], state.preparedSettings.quality === "2K" ? [] : ["sr"]);
@@ -1284,6 +1379,7 @@ async function createDirectH3Job() {
   $("#resultCard").hidden = true;
   updatePipeline("assets", [], ["ir", ...(state.desiredQuality === "2K" ? [] : ["sr"])]);
   setStatus("正在读取参考素材", "素材只用于本次 H3 任务，不会调用 IR 服务。", 5);
+  startStepTiming("assets", "素材准备（浏览器）");
 
   try {
     const conditions = [];
@@ -1301,6 +1397,7 @@ async function createDirectH3Job() {
       });
     }
 
+    endStepTiming("assets");
     updatePipeline("h3", ["assets"], ["ir", ...(state.preparedSettings.quality === "2K" ? [] : ["sr"])]);
     setStatus("正在提交 H3 任务", "使用自定义 IR Prompt 和当前素材顺序创建视频任务。", 51);
     const model = settings.model;
@@ -1317,12 +1414,14 @@ async function createDirectH3Job() {
       throw new Error("Base64 编码后的请求超过 88 MiB，请压缩或减少参考素材。 ");
     }
     submitting = true;
+    startStepTiming("h3Submit", "H3 提交（含上传与网络）");
     const created = await fetchJson(`${API_V1_ROOT}/videos`, {
       method: "POST",
       headers: authHeaders({ json: true }),
       body,
       signal: controller.signal
     });
+    if (state.abortController === controller) endStepTiming("h3Submit");
     rememberJob(created, model, "h3", submittedIr);
     if (state.abortController !== controller) return;
     const completed = await pollJob(created, model, "h3");
@@ -1357,12 +1456,14 @@ async function createSrJob(sourceJobId) {
   const model = "FreyrAI/SR-D3-2K";
   const controller = state.abortController;
   setStatus("正在提交 2K 超分任务", "768P 视频已完成，正在创建独立的 Video SR 任务。", 76);
+  startStepTiming("srSubmit", "超分提交（含网络）");
   const created = await fetchJson(`${API_V1_ROOT}/videos`, {
     method: "POST",
     headers: authHeaders({ json: true }),
     body: stringifyApiPayload({ model, source_job_id: sourceJobId }),
     signal: state.abortController.signal
   });
+  if (state.abortController === controller) endStepTiming("srSubmit");
   rememberJob({ ...created, source_job_id: sourceJobId }, model, "sr", state.history.find((record) => record.id === sourceJobId)?.irSnapshot);
   if (state.abortController !== controller) return;
   state.srJob = await pollJob(created, model, "sr");
@@ -1455,8 +1556,11 @@ async function showCompletedVideo(job, quality, model = quality === "2K" ? "Frey
   try {
     setStatus("视频生成完成", quality === "2K" ? "2K 超分视频已准备好。" : "768P 视频已准备好。", 100, "success");
     setJobMeta(job, quality === "2K" ? "Video SR" : "MiniMax H3");
+    const downloadTimingKey = quality === "2K" ? "srDownload" : "h3Download";
+    startStepTiming(downloadTimingKey, `${quality} 结果加载（浏览器）`);
     const blob = await fetchVideoBlob(job, model, controller?.signal);
     if (state.abortController !== controller || state.currentJob?.id !== job.id) return;
+    endStepTiming(downloadTimingKey);
     if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
     state.resultObjectUrl = URL.createObjectURL(blob);
     $("#resultVideo").src = state.resultObjectUrl;
@@ -1509,6 +1613,9 @@ function resetTask() {
   state.currentJob = null;
   state.h3Job = null;
   state.srJob = null;
+  state.stepTimings = {};
+  state.timingJobs = {};
+  renderStepTimings();
   if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
   state.resultObjectUrl = "";
   state.resultJob = null;

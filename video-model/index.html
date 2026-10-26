@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20261013-ir-unicode-r1">
-    <script defer src="app.js?v=20261024-direct-prompt-60k-r1"></script>
+    <link rel="stylesheet" href="styles.css?v=20261026-step-timings-r1">
+    <script defer src="app.js?v=20261026-step-timings-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -211,6 +211,12 @@
               <button class="button danger compact" id="cancelTask" type="button" hidden>取消排队任务</button>
             </div>
           </div>
+
+          <section class="step-timings" id="stepTimings" aria-labelledby="stepTimingTitle" hidden>
+            <h3 id="stepTimingTitle">阶段耗时</h3>
+            <p>排队、处理取自服务端时间，随状态查询更新。处理包含服务端准备、生成及归档；浏览器计时单独标注，部分阶段有重叠，请勿相加。未返回的时间显示“未提供”。</p>
+            <dl id="stepTimingList"></dl>
+          </section>
 
           <section class="ir-review" id="irReview" hidden>
             <div class="review-head">
