@@ -8,8 +8,8 @@
     <meta name="robots" content="noindex">
     <link rel="icon" type="image/png" href="../assets/icon.png">
     <link rel="apple-touch-icon" href="../assets/icon.png">
-    <link rel="stylesheet" href="styles.css?v=20261026-step-timings-r1">
-    <script defer src="app.js?v=20261026-step-timings-r1"></script>
+    <link rel="stylesheet" href="styles.css?v=20261026-history-preview-r1">
+    <script defer src="app.js?v=20261026-history-preview-r1"></script>
   </head>
   <body>
     <header class="topbar">
@@ -271,6 +271,14 @@
           </div>
           <p class="history-notice">这是测试 Playground。当前浏览器会保存任务编号、状态及本次使用的 IR prompt（可能包含业务文本），不保存参考素材或视频文件。共享设备使用后请清空本地记录；服务端生成文件不会长期保留，请及时下载。</p>
           <p class="history-message" id="historyMessage" role="status" hidden></p>
+          <section class="history-preview" id="historyPreviewPanel" aria-labelledby="historyPreviewTitle" hidden>
+            <div class="history-head">
+              <h4 id="historyPreviewTitle">历史视频预览</h4>
+              <button class="button ghost compact" id="closeHistoryPreview" type="button">关闭预览</button>
+            </div>
+            <p id="historyPreviewInfo" role="status"></p>
+            <video id="historyPreviewVideo" controls playsinline preload="metadata" aria-label="历史任务视频预览"></video>
+          </section>
           <div class="history-list" id="historyList"></div>
         </section>
       </section>

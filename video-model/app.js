@@ -67,6 +67,7 @@ const $$ = (selector, scope = document) => Array.from(scope.querySelectorAll(sel
 // Server timestamps, not polling intervals, own queue and processing durations.
 state.stepTimings = {};
 state.timingJobs = {};
+state.historyPreview = null;
 
 function timestampMs(value) {
   if (value === null || value === undefined || value === "") return null;
@@ -549,8 +550,8 @@ function rememberJob(job, model, phase, irSnapshot = null) {
     status: job.status || previous.status || "queued",
     progress: Number(job.progress) || 0,
     currentStage: scrubSensitiveText(job.current_stage || previous.currentStage || ""),
-    seconds: settings.seconds ?? previous.seconds ?? null,
-    ratio: settings.ratio || previous.ratio || "",
+    seconds: previous.seconds ?? settings.seconds ?? null,
+    ratio: previous.ratio || settings.ratio || "",
     sourceJobId: phase === "sr" ? (job.source_job_id || state.h3Job?.id || previous.sourceJobId || "") : "",
     createdAt: previous.createdAt || job.created_at || new Date().toISOString(),
     serverTiming: {
@@ -599,12 +600,13 @@ function renderHistory() {
           <strong>${escapeHtml(record.phase === "sr" ? "2K 超分" : "H3 生成")} · ${escapeHtml(record.id)}</strong>
           <span>${escapeHtml(details)}</span>
           <small>${escapeHtml(record.model)}</small>
-          ${record.serverTiming ? `<small>${timingRows(record.serverTiming, record.phase === "sr" ? "超分" : "H3").map(([label, value]) => escapeHtml(`${label} ${value}`)).join(" · ")}</small>` : ""}
+          <small>${record.serverTiming ? timingRows(record.serverTiming, record.phase === "sr" ? "超分" : "H3").map(([label, value]) => escapeHtml(`${label} ${value}`)).join(" · ") : "耗时信息未保存，点击刷新状态获取。"}</small>
         </div>
         <span class="history-status">${escapeHtml(historyStatusLabel(record.status))}</span>
         <div class="history-actions">
           ${canReuseIr ? `<button class="button primary compact" type="button" data-history-reuse-ir="${escapeHtml(record.id)}">复用 IR 生成 H3</button>` : ""}
           <button class="button ghost compact" type="button" data-history-refresh="${escapeHtml(record.id)}">刷新状态</button>
+          <button class="button primary compact" type="button" data-history-preview="${escapeHtml(record.id)}" ${completed ? "" : "disabled"}>在线预览</button>
           <button class="button primary compact" type="button" data-history-download="${escapeHtml(record.id)}" ${completed ? "" : "disabled"}>下载</button>
           <button class="button ghost compact" type="button" data-history-remove="${escapeHtml(record.id)}">移除记录</button>
         </div>
@@ -705,6 +707,56 @@ async function downloadHistoryJob(record, button) {
     setHistoryMessage(`${record.id}：下载已开始。`);
   } catch (error) {
     setHistoryMessage(`${record.id}：${friendlyError(error)}`, true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function closeHistoryPreview() {
+  const preview = state.historyPreview;
+  state.historyPreview = null;
+  preview?.controller.abort();
+  const video = $("#historyPreviewVideo");
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+  if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+  $("#historyPreviewPanel").hidden = true;
+}
+
+async function previewHistoryJob(record, button) {
+  if (!record || record.status !== "completed") return;
+  if (!authIsComplete()) {
+    setHistoryMessage("请先配置与原任务相同的 Request headers，再预览视频。", true);
+    $("#authPanel").hidden = false;
+    $("#authToggle").setAttribute("aria-expanded", "true");
+    return;
+  }
+  closeHistoryPreview();
+  const preview = { id:record.id, controller:new AbortController(), objectUrl:"" };
+  state.historyPreview = preview;
+  button.disabled = true;
+  $("#historyPreviewPanel").hidden = false;
+  $("#historyPreviewTitle").textContent = `${record.quality || "视频"} · ${record.id}`;
+  $("#historyPreviewInfo").textContent = "正在读取已有视频，不会重新生成；大文件首次加载可能稍久。";
+  try {
+    // Independent controller: closing history must not cancel current generation.
+    const job = await queryJobWithRetry(jobUrl(record.id,record.model), preview.controller.signal);
+    if (state.historyPreview !== preview) return;
+    rememberJob(job,record.model,record.phase);
+    if (job.status !== "completed") throw new Error("该任务尚未完成，请刷新状态后重试。");
+    $("#historyPreviewInfo").textContent = timingRows(job, record.phase === "sr" ? "超分" : "H3")
+      .map(([label,value]) => `${label} ${value}`).join(" · ") + " · 正在加载视频…";
+    const blob = await fetchVideoBlob(job,record.model,preview.controller.signal);
+    if (state.historyPreview !== preview) return;
+    preview.objectUrl = URL.createObjectURL(blob);
+    $("#historyPreviewVideo").src = preview.objectUrl;
+    $("#historyPreviewVideo").load();
+    $("#historyPreviewInfo").textContent = timingRows(job, record.phase === "sr" ? "超分" : "H3")
+      .map(([label,value]) => `${label} ${value}`).join(" · ");
+  } catch (error) {
+    if (state.historyPreview !== preview) return;
+    $("#historyPreviewInfo").textContent = `预览未加载：${friendlyError(error)}。服务端文件可能已过期；这不会改变任务状态或重新生成。`;
   } finally {
     button.disabled = false;
   }
@@ -1730,6 +1782,7 @@ function bindEvents() {
   $("#upscaleVideo").addEventListener("click", upscaleCompletedVideo);
   $("#resetTask").addEventListener("click", resetTask);
   $("#clearHistory").addEventListener("click", () => {
+    closeHistoryPreview();
     state.history = [];
     localStorage.removeItem(HISTORY_STORAGE_KEY);
     setHistoryMessage("已清空此浏览器中的任务记录。所有服务端任务和文件均未删除。");
@@ -1739,21 +1792,25 @@ function bindEvents() {
     const reuseIr = event.target.closest("[data-history-reuse-ir]");
     const refresh = event.target.closest("[data-history-refresh]");
     const download = event.target.closest("[data-history-download]");
+    const preview = event.target.closest("[data-history-preview]");
     const remove = event.target.closest("[data-history-remove]");
     const id = reuseIr?.dataset.historyReuseIr || refresh?.dataset.historyRefresh
-      || download?.dataset.historyDownload || remove?.dataset.historyRemove;
+      || download?.dataset.historyDownload || preview?.dataset.historyPreview || remove?.dataset.historyRemove;
     if (!id) return;
     const record = state.history.find((item) => item.id === id);
     if (reuseIr) reuseHistoryIr(record, reuseIr);
     if (refresh) refreshHistoryJob(record, refresh);
     if (download) downloadHistoryJob(record, download);
+    if (preview) previewHistoryJob(record, preview);
     if (remove) {
+      if (state.historyPreview?.id === id) closeHistoryPreview();
       state.history = state.history.filter((item) => item.id !== id);
       persistHistory();
       setHistoryMessage(`已从此浏览器移除 ${id}。服务端任务和文件未删除。`);
       renderHistory();
     }
   });
+  $("#closeHistoryPreview").addEventListener("click", closeHistoryPreview);
   $("#downloadVideo").addEventListener("click", () => {
     if (!state.resultObjectUrl) return;
     const anchor = document.createElement("a");
@@ -1762,6 +1819,7 @@ function bindEvents() {
     anchor.click();
   });
   window.addEventListener("beforeunload", () => {
+    closeHistoryPreview();
     state.assets.forEach((asset) => asset.previewUrl && URL.revokeObjectURL(asset.previewUrl));
     if (state.resultObjectUrl) URL.revokeObjectURL(state.resultObjectUrl);
   });
