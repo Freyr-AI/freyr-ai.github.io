@@ -21,10 +21,13 @@ IR Unicode 修复：API JSON 序列化统一处理所有字符串值，包括音
 的转义。合法中文、emoji、引号和反斜杠保持不变；只替换非法字符，不改接口
 字段、SHA-256或素材二进制内容。资源版本：`20261013-ir-unicode-r1`。
 
-新建任务的“提示词优化 IR”仅显示 `H3Offical-IR`；页面提交时仍发送
-`ir_provider: H3Offical-IR`。旧历史记录保留原 provider 标记和复用能力，
-不下线 OpenH3-IR 后端，也不修改客户 API。页面脚本资源版本：
-`20261013-official-ir-only-r1`。
+“提示词优化 IR”提供 `H3Offical-IR`（保留默认）、`OpenH3-IR` 和
+`H3-Omni-Rewriter`。沿用原 `model: IR`、`ir_provider` 字段和上传／任务／结果接口。
+切换 provider 后必须重新生成 IR；新 IR 和 Official 均需 provider 匹配、
+validation 通过、素材 SHA／顺序／标签一致才允许提交视频，OpenH3 保留既有语义。
+音频文件名仍仅发送给支持它的 Official 和 Omni；旧历史记录保留原 provider。
+页面脚本资源版本：`20261030-ir-providers-r1`。此变更含 74 项前端回归；
+生产发布和网页实测状态另见部署记录，源代码完成不等于网站已更新。
 
 自定义 IR 连续生成（`20261022-direct-repeat-r1`）：每次点击均先执行与“新建任务”
 相同的结果清理，释放旧视频 URL、播放器、Job 和超分状态，保留用户的素材文件、

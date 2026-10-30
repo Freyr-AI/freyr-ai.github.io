@@ -24,12 +24,12 @@ function context() {
   return {ctx, nodes};
 }
 
-test("new IR requests offer only H3Offical-IR", () => {
+test("IR selector retains the default and offers three compatible providers", () => {
   const html = fs.readFileSync(`${__dirname}/index.html`, "utf8");
   const selector = html.match(/<select id="irProvider"[^>]*>([\s\S]*?)<\/select>/)?.[1];
   assert.ok(selector);
   assert.deepEqual([...selector.matchAll(/<option value="([^"]+)"/g)].map((match) => match[1]),
-    ["H3Offical-IR"]);
+    ["H3Offical-IR", "OpenH3-IR", "H3-Omni-Rewriter"]);
   const {ctx} = context();
   const snapshot = vm.runInContext("snapshotIr({id:'new',ir:{prompt:'prompt'}}, {})", ctx);
   assert.equal(snapshot.provider, "H3Offical-IR");
@@ -180,6 +180,26 @@ test("provider substitution is blocked", () => {
   vm.runInContext(`state.brief = {id:'old',provider:'OpenH3-IR',ir:{manifest:[{kind:'image',sha256:'a',label:'<Picture 1>'}]}};
     renderIrReview(state.brief); setBusy(false);`, ctx);
   assert.equal(nodes.get("#confirmGenerate").disabled, true);
+});
+
+test("Omni requires its own validated provider and exact manifest", () => {
+  const {ctx, nodes} = context();
+  vm.runInContext(`state.preparedSettings.irProvider='H3-Omni-Rewriter';
+    state.brief={id:'irjob_omni',provider:'H3-Omni-Rewriter',validation:{passed:true},
+      ir:{manifest:[{kind:'image',sha256:'a',label:'<Picture 1>'}]}};
+    renderIrReview(state.brief); setBusy(false);`,ctx);
+  assert.equal(nodes.get('#confirmGenerate').disabled,false);
+  for (const mutation of ["state.brief.provider='H3Offical-IR'", "state.brief.validation.passed=false",
+                          "state.brief.ir.manifest[0].sha256='other'"]) {
+    const {ctx: testCtx,nodes: testNodes}=context();
+    vm.runInContext(`state.preparedSettings.irProvider='H3-Omni-Rewriter';
+      state.brief={id:'irjob_omni',provider:'H3-Omni-Rewriter',validation:{passed:true},
+        ir:{manifest:[{kind:'image',sha256:'a',label:'<Picture 1>'}]}};
+      ${mutation}; renderIrReview(state.brief); setBusy(false);`,testCtx);
+    assert.equal(testNodes.get('#confirmGenerate').disabled,true);
+  }
+  const payload=vm.runInContext(`irAssetPayload({type:'audio',sha256:'hash',file:{name:'人物音色.wav'}},'H3-Omni-Rewriter')`,ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(payload)),{sha256:'hash',kind:'audio',filename:'人物音色.wav'});
 });
 
 test("validation reasons are visible", () => {

@@ -800,7 +800,7 @@ function renderAssets() {
         <div class="asset-copy">
           <strong>${assetTypeLabel(asset.type)} ${asset.number} · ${escapeHtml(asset.file.name)}</strong>
           <span>${escapeHtml(asset.file.type)} · ${formatBytes(asset.file.size)}</span>
-          ${asset.type === "audio" ? '<small>H3Offical-IR 根据提示词和文件名判断用途，无需单独填写。建议使用“林雪音色.wav”等清晰命名。</small>' : ""}
+          ${asset.type === "audio" ? '<small>请在创作意图中写明音频用途和对应说话人，并使用“林雪音色.wav”等清晰命名；生成 IR 后核对映射。</small>' : ""}
         </div>
         <div class="asset-actions">
           <button class="icon-button" type="button" data-move="up" data-id="${asset.id}" aria-label="向前移动" ${index === 0 ? "disabled" : ""}>↑</button>
@@ -858,8 +858,8 @@ function validateInput() {
   const direct = $("#promptSourceInput").value === "direct";
   const prompt = $("#intentInput").value.trim();
   const promptLimit = direct ? DIRECT_PROMPT_MAX_CHARS : IR_INTENT_MAX_CHARS;
-  if (!direct && $("#irProvider").value === "H3Offical-IR" && $("#ratioInput").value === "adaptive") {
-    return "H3Offical-IR 请明确选择画面比例（如 16:9 或 9:16），暂不支持自动比例。";
+  if (!direct && usesValidatedIr($("#irProvider").value) && $("#ratioInput").value === "adaptive") {
+    return `${$("#irProvider").value} 请明确选择画面比例（如 16:9 或 9:16），暂不支持自动比例。`;
   }
   if (!authIsComplete()) return "请先配置 Authorization 和两项 Cloudflare Access headers。";
   if (!prompt) return direct ? "请输入完整的自定义 IR Prompt。" : "请填写创作意图。";
@@ -1065,6 +1065,10 @@ function manifestEntryLabel(entry) {
   return String(entry?.label || entry?.tag || entry?.name || "");
 }
 
+function usesValidatedIr(provider) {
+  return provider === "H3Offical-IR" || provider === "H3-Omni-Rewriter";
+}
+
 function renderIrReview(brief) {
   const expected = expectedManifest(state.preparedAssets);
   const actual = manifestFromBrief(brief);
@@ -1078,11 +1082,12 @@ function renderIrReview(brief) {
   });
   const manifestVerifiable = actual.length === expected.length && rows.every((row) => row.matches);
   const degraded = String(brief?.status || "").toLowerCase() === "degraded";
-  state.irVerified = manifestVerifiable && (state.preparedSettings?.irProvider !== "H3Offical-IR" ||
-    (brief?.provider === "H3Offical-IR" && brief?.validation?.passed === true && !degraded));
+  const provider = state.preparedSettings?.irProvider;
+  state.irVerified = manifestVerifiable && (!usesValidatedIr(provider) ||
+    (brief?.provider === provider && brief?.validation?.passed === true && !degraded));
   $("#irReview").hidden = false;
   $("#irStatus").textContent = `${state.preparedSettings?.irProvider || "H3Offical-IR"} · ${degraded ? "Degraded · 请仔细核对" : state.irVerified ? "映射一致" : "校验失败，禁止提交"}`;
-  $("#irStatus").classList.toggle("warning", degraded || !manifestVerifiable);
+  $("#irStatus").classList.toggle("warning", degraded || !state.irVerified);
   $("#manifestList").innerHTML = rows.map((row) => `
     <div class="manifest-item ${row.matches ? "" : "mismatch"}">
       <strong>${escapeHtml(row.returnedLabel)}</strong>
@@ -1103,7 +1108,7 @@ function renderIrReview(brief) {
 
 function irAssetPayload(asset, provider) {
   return {sha256: asset.sha256, kind: asset.type,
-    ...(provider === "H3Offical-IR" && asset.type === "audio" ? {filename: toWellFormedText(asset.file.name)} : {})};
+    ...(usesValidatedIr(provider) && asset.type === "audio" ? {filename: toWellFormedText(asset.file.name)} : {})};
 }
 
 async function prepareIr() {
